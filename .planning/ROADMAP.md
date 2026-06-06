@@ -90,11 +90,15 @@ Plans:
 
 ## Phase 4.5: Spiked Features
 
-**Goal:** Implement transaction CRUD (edit/delete all fields) and fix import dedup (add `reference_id` to hash).
+**Goal:** Implement transaction CRUD (edit/delete all fields).
+**Plans:** 2/2 plans — planned
 
-- [ ] Backend: modify immutability triggers, add PUT/DELETE/GET single transaction endpoints, re-enqueue on edit
-- [ ] Frontend: add edit/delete UI to transaction table, wire to new endpoints
-- [ ] Import: add `reference_id` column, have LLM extract it from CSV, include in dedup hash
+**Wave 1** *(parallel — backend + frontend)*
+
+- [ ] 04.5-01-PLAN.md — Backend: schema migration (triggers, updated_at), entities, schemas, use-cases, API routes (GET/PUT/DELETE /transactions/:id), tests
+- [ ] 04.5-02-PLAN.md — Frontend: API client, TransactionTable action buttons, AddTransactionPage edit mode, MonthlyPage delete dialog + edit nav, App.tsx route
+
+**Note:** Import dedup (`reference_id` column, LLM extraction) deferred per D-08/D-09. Not in scope for this phase.
 
 ## Phase 5: Polishing & Deployment
 
