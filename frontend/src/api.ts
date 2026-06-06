@@ -106,6 +106,52 @@ export async function createTransaction(data: {
   return json.data;
 }
 
+export async function getTransaction(id: string) {
+  const res = await fetch(`/transactions/${id}`, { credentials: 'include' });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to fetch transaction: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateTransaction(id: string, data: {
+  account_id: string;
+  category_id?: string | null;
+  type: 'income' | 'expense' | 'transfer';
+  amount: string;
+  description?: string | null;
+  date: string;
+  transfer_to_account_id?: string | null;
+}) {
+  const res = await fetch(`/transactions/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to update transaction: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function deleteTransaction(id: string) {
+  const res = await fetch(`/transactions/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to delete transaction: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
 export async function assignCategory(transactionId: string, categoryId: string) {
   const res = await fetch(`/transactions/${transactionId}/category`, {
     method: 'PATCH',
