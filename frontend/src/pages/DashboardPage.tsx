@@ -23,7 +23,7 @@ export default function DashboardPage({ onMonthClick }: DashboardPageProps) {
           month: r.month,
           wydatki: parseFloat(r.wydatki),
           przychody: parseFloat(r.przychody),
-          stan_konta: r.stan_konta ? parseFloat(r.stan_konta) : null,
+          stan_konta: r.stan_konta != null ? parseFloat(r.stan_konta) : null,
           wydatki_bez_stalych: parseFloat(r.wydatki_bez_stalych),
           zaoszczedzone: parseFloat(r.zaoszczedzone),
           zaoszczedzone_log: parseFloat(r.zaoszczedzone_log),
