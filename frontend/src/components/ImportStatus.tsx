@@ -15,9 +15,10 @@ interface ImportJob {
 interface ImportStatusProps {
   jobId: string;
   onBack: () => void;
+  onCategorize?: () => void;
 }
 
-export default function ImportStatus({ jobId, onBack }: ImportStatusProps) {
+export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStatusProps) {
   const [job, setJob] = useState<ImportJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isErrorsExpanded, setIsErrorsExpanded] = useState<boolean>(false);
@@ -121,7 +122,7 @@ export default function ImportStatus({ jobId, onBack }: ImportStatusProps) {
   return (
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-extrabold text-slate-100">Import Status</h2>
+        <h2 className="text-3xl font-semibold text-slate-100">Import Status</h2>
         <p className="text-slate-400 mt-1 text-xs font-mono select-all">Job ID: {jobId}</p>
       </div>
 
@@ -197,6 +198,14 @@ export default function ImportStatus({ jobId, onBack }: ImportStatusProps) {
         )}
 
         {/* Actions */}
+        {job.status === 'completed' && onCategorize && (
+          <button
+            onClick={onCategorize}
+            className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition-all duration-300 active:scale-95 shadow-lg mb-3"
+          >
+            Categorize Transactions
+          </button>
+        )}
         <button
           onClick={onBack}
           className="w-full py-4 px-6 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-200 rounded-xl font-bold transition-all duration-300 active:scale-95 shadow-sm"

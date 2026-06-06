@@ -92,7 +92,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
   return (
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+        <h2 className="text-3xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
           Import Transactions
         </h2>
         <p className="text-slate-400 mt-2 text-sm">
@@ -167,7 +167,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
               className="hidden"
               aria-label="Upload CSV file"
             />
-            
+
             <svg
               className="w-12 h-12 text-slate-500 mb-4"
               fill="none"
