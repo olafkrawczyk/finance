@@ -22,6 +22,11 @@ export const CreateOpeningBalanceSchema = z.object({
 // PUT /opening-balance/:id
 export const UpdateOpeningBalanceSchema = CreateOpeningBalanceSchema.partial();
 
+// PATCH /transactions/:id/category
+export const AssignCategorySchema = z.object({
+  category_id: z.uuid(),
+});
+
 // GET /transactions query params
 export const ListTransactionsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
