@@ -3,7 +3,7 @@
 ## Phase 1: Foundation (Core Ledger & DB)
 
 **Goal:** Establish the immutable ledger and database schema.
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -11,7 +11,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Domain layer: entities, Zod v4 schemas, ledger + opening-balance use-cases, monthly summary
+- [x] 01-02-PLAN.md — Domain layer: entities, Zod v4 schemas, ledger + opening-balance use-cases, monthly summary
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
