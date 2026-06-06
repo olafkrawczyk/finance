@@ -110,6 +110,27 @@ Plans:
 - [x] 04.6-01-PLAN.md — Backend: schema migration for assets table, Zod validation schemas, core asset use-cases, Hono API routes (GET/POST/PUT/DELETE /assets), integration tests
 - [x] 04.6-02-PLAN.md — Frontend: Assets API client, Assets management page (CRUD), Dashboard tiles (Total Net Value and Current Month Summary), and chart formatting (Tooltip and Y-Axis)
 
+## Phase 4.7: Auth UI (Login/Logout/Guard)
+
+**Goal:** Build frontend authentication UI — login/signup page, session-based route guarding, and logout.
+
+**Wave 1** *(parallel — frontend plans)*
+
+- [ ] 04.7-01-PLAN.md — Auth Pages: Tabbed login/signup page with email/password + Google OAuth, redirect to /dashboard on success
+- [ ] 04.7-02-PLAN.md — Auth Guard & Logout: Session check in App.tsx, redirect to /login if unauthenticated, loading spinner, logout button in header
+
+**Verification:** Visit app without session → redirect to /login. Sign up with email → redirect to /dashboard. Logout → redirect to /login. Sign in with Google → redirect to /dashboard.
+
+## Phase 4.8: Excel Data Migration
+
+**Goal:** Implement Excel binary spreadsheet ingestion via a dedicated `/migration` route with destructive warnings and custom category/account routing.
+
+**Wave 1** *(parallel — backend + frontend)*
+
+- [ ] 04.8-01-PLAN.md — Backend Excel Ingestion: API route `/api/migration/excel` (multipart upload), dependency on XLSX parser, PGMQ ingestion task, account routing, category mapping, destructive truncate
+- [ ] 04.8-02-PLAN.md — Frontend Migration Page: `/migration` route, prominent destructive warning modal, upload status polling, error and success indicators
+
+**Verification:** Upload `budget.xlsx` via `/migration` route after confirming warning. Verify transactions are imported correctly (ING vs. PKO routing), opening balances match, and existing data was cleared.
 
 ## Phase 5: Polishing & Deployment
 
@@ -119,3 +140,4 @@ Plans:
 - [ ] Performance tuning for Postgres queries.
 - [ ] Security audit and hardening.
 - [ ] Final UI/UX polish.
+

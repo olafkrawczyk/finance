@@ -69,3 +69,14 @@ Deliver a robust, ledger-first financial planning application that provides user
 - **Data Integrity:** Zero-sum transaction verification at the database level.
 - **Performance:** Sub-100ms API response times for standard queries.
 - **Reliability:** Background jobs must be idempotent and retryable.
+
+### 7. Excel Data Migration (Phase 4.8)
+
+- **REQ-7.1 Dedicated Migration Route:** A `/migration` URL path, hidden from the main navigation menu, that renders the Data Ingestion / Migration UI.
+- **REQ-7.2 Destructive Reset:** The migration performs a clean wipe of all transactions, opening balances, insights, and import jobs prior to importing, acting as a clean initialization. A prominent confirmation dialog warning of data loss is required before execution.
+- **REQ-7.3 Ingestion and Routing Rules:**
+  - **Opening Balances:** Extract the monthly opening balances from the cell under "Stan konta na początku miesiąca" (or equivalent column) and insert into `monthly_opening_balances`.
+  - **Category Mapping:** Map legacy spreadsheet categories `dentysta` -> `lekarz`, `mpk` -> `przejazdy`, and `kawka` -> `kawa`. Fallback unrecognized categories to `fun`.
+  - **Account Routing:** Assign transactions to the ING Business account (`Konto Direct dla Firmy`) if the category is `VAT`, `ZUS`, `PIT`/`PIT36`, `paliwo`, or `auto` (where amount > 2000 PLN), or if the description contains `PPE`, `ORANGE`, or `PLAY` (case-insensitive). Otherwise, assign to PKO Personal (`IPKO`).
+  - **Incomes:** Import incomes from the "Przychody" section as transactions with `type = 'income'`, mapping names as descriptions and amounts as values, defaulting dates to the 1st of the month if no transaction date is present.
+
