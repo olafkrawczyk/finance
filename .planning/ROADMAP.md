@@ -41,13 +41,28 @@ Plans:
 ## Phase 3: Views & Categorization
 
 **Goal:** Build the frontend matching the budget.xlsx views exactly.
+**Plans:** 0/7 plans complete
 
-- [ ] **Zbiorczy view:** Table with month | wydatki | przychody | stan konta | wydatki bez kosztów stałych | zaoszczędzone | zaoszczędzone log.
-- [ ] **Monthly view:** Per-month transaction list (category, amount, description, date) + sidebar: income sources, opening balance, fixed costs by category.
-- [ ] **Categorization UI:** Batch-assign categories to uncategorized imported transactions. Dropdown from the 26-category list.
-- [ ] **Manual entry form:** Add transaction: category, amount, description, date, type, account.
-- [ ] **Dashboard charts:** Balance over time, expenses+income+balance+prediction, savings, savings log-scale.
-- [ ] **Verification:** Import ing.csv + ipko.csv, categorize, verify Zbiorczy numbers match a known month from budget.xlsx.
+**Wave 1** *(parallel)*
+
+- [ ] 03-01-PLAN.md — Backend API + Schema: immutability trigger relaxation, PATCH /transactions/:id/category, migration, schema push [BLOCKING]
+- [ ] 03-02-PLAN.md — Frontend foundations: Recharts + react-is install, Vite proxy routes, api.ts extension, linearRegression.ts utility
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — UI Components: ZbiorczyTable, TransactionTable, MonthSidebar, CategoryDropdown
+- [ ] 03-04-PLAN.md — Chart Components: BalanceChart, ComboChart, SavingsChart, SavingsLogChart (Recharts)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-05-PLAN.md — Data View Pages: DashboardPage (4 charts + LR prediction), ZbiorczyPage, MonthlyPage (drill-down)
+- [ ] 03-06-PLAN.md — Action Pages: CategorizePage (bulk-select + assign), AddTransactionPage (manual entry form)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-07-PLAN.md — App Integration: routes, header nav, layout update, ImportStatus Categorize button, typography fix (font-extrabold → font-semibold)
+
+**Verification:** Import ing.csv + ipko.csv, categorize, verify Zbiorczy numbers match a known month from budget.xlsx.
 
 ## Phase 4: AI Insights & Forecasting
 
