@@ -3,7 +3,7 @@
 ## Phase 1: Foundation (Core Ledger & DB)
 
 **Goal:** Establish the immutable ledger and database schema.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 **Wave 1**
 
@@ -15,7 +15,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Core API: Hono routes (transactions, summary, opening-balance CRUD, reference), Bun server entry
+- [x] 01-03-PLAN.md — Core API: Hono routes (transactions, summary, opening-balance CRUD, reference), Bun server entry
 
 ## Phase 2: Ingestion & Auth
 
