@@ -72,7 +72,7 @@ export default function ZbiorczyTable({ rows, onRowClick }: ZbiorczyTableProps) 
                 {fmt(row.zaoszczedzone)}
               </td>
               <td className="px-6 py-4 text-right text-slate-400 font-mono">
-                {row.zaoszczedzone_log.toFixed(2)}
+                {isNaN(row.zaoszczedzone_log) ? '—' : row.zaoszczedzone_log.toFixed(2)}
               </td>
             </tr>
           ))}
