@@ -1,0 +1,14 @@
+{
+  "project_name": "Financial Planning App",
+  "stack": {
+    "backend": "Bun, Hono, Zod",
+    "frontend": "React, Tailwind CSS",
+    "database": "Postgres (locally hosted)",
+    "queue": "pgmq",
+    "ai": "OpenRouter API"
+  },
+  "workflow": {
+    "auth": "OAuth/SSO",
+    "mode": "auto"
+  }
+}
