@@ -103,12 +103,13 @@ Plans:
 ## Phase 4.6: Dashboard & Assets
 
 **Goal:** Implement new dashboard tiles for Total Net Value (with asset management) and Current Month Summary, and format chart values.
-**Plans:** 0/2 plans complete
+**Plans:** 2/2 plans complete
 
 **Wave 1** *(parallel — backend + frontend)*
 
-- [ ] 04.6-01-PLAN.md — Backend: schema migration for assets table, Zod validation schemas, core asset use-cases, Hono API routes (GET/POST/PUT/DELETE /assets), integration tests
-- [ ] 04.6-02-PLAN.md — Frontend: Assets API client, Assets management page (CRUD), Dashboard tiles (Total Net Value and Current Month Summary), and chart formatting (Tooltip and Y-Axis)
+- [x] 04.6-01-PLAN.md — Backend: schema migration for assets table, Zod validation schemas, core asset use-cases, Hono API routes (GET/POST/PUT/DELETE /assets), integration tests
+- [x] 04.6-02-PLAN.md — Frontend: Assets API client, Assets management page (CRUD), Dashboard tiles (Total Net Value and Current Month Summary), and chart formatting (Tooltip and Y-Axis)
+
 
 ## Phase 5: Polishing & Deployment
 
