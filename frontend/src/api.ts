@@ -58,6 +58,7 @@ export async function getTransactions(params?: {
   date_to?: string;
   page?: number;
   per_page?: number;
+  uncategorized?: boolean;
 }) {
   const searchParams = new URLSearchParams();
   if (params) {
@@ -132,3 +133,64 @@ export async function getOpeningBalance(year?: number, month?: number) {
   const json = await res.json();
   return json.data;
 }
+
+export async function getInsights(params?: {
+  type?: 'alert' | 'tip' | 'trend' | 'forecast';
+  dismissed?: boolean;
+  page?: number;
+  per_page?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) searchParams.set(key, String(value));
+    });
+  }
+  const qs = searchParams.toString();
+  const res = await fetch(`/insights${qs ? '?' + qs : ''}`, { credentials: 'include' });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch insights: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return { data: json.data, meta: json.meta };
+}
+
+export async function dismissInsight(insightId: string) {
+  const res = await fetch(`/insights/${insightId}/dismiss`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dismissed: true }),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to dismiss insight: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function generateInsights() {
+  const res = await fetch('/insights/generate', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to generate insights: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function getInsightsForecast() {
+  const res = await fetch('/insights/forecast', { credentials: 'include' });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch forecasts: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+

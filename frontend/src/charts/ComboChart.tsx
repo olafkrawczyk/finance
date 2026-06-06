@@ -26,10 +26,11 @@ interface PredictionPoint {
 interface ComboChartProps {
   data: ComboDataPoint[];
   prediction: PredictionPoint[];
+  aiForecast?: PredictionPoint[];
   onMonthClick?: (month: string) => void;
 }
 
-export default function ComboChart({ data, prediction, onMonthClick }: ComboChartProps) {
+export default function ComboChart({ data, prediction, aiForecast, onMonthClick }: ComboChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[350px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
@@ -42,6 +43,7 @@ export default function ComboChart({ data, prediction, onMonthClick }: ComboChar
   const mergedData = data.map((d, index) => ({
     ...d,
     prediction: prediction[index]?.value ?? null,
+    aiForecast: aiForecast?.[index]?.value ?? null,
   }));
 
   return (
@@ -80,7 +82,16 @@ export default function ComboChart({ data, prediction, onMonthClick }: ComboChar
           strokeWidth={2}
           strokeDasharray="8 4"
           connectNulls
-          name="Predykcja"
+          name="Predykcja (LR)"
+        />
+        <Line
+          type="monotone"
+          dataKey="aiForecast"
+          stroke="#06b6d4"
+          strokeWidth={2}
+          strokeDasharray="4 4"
+          connectNulls
+          name="Predykcja (AI)"
         />
       </ComposedChart>
     </ResponsiveContainer>

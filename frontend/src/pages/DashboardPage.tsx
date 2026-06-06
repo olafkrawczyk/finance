@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getMonthlySummary } from '../api';
+import { getMonthlySummary, getInsightsForecast } from '../api';
 import { linearRegression } from '../lib/linearRegression';
 import { NormalizedSummaryRow } from '../components/ZbiorczyTable';
 import BalanceChart from '../charts/BalanceChart';
 import ComboChart from '../charts/ComboChart';
 import SavingsChart from '../charts/SavingsChart';
 import SavingsLogChart from '../charts/SavingsLogChart';
+import InsightsWidget from '../components/InsightsWidget';
 
 interface DashboardPageProps {
   onMonthClick: (month: string) => void;
@@ -15,6 +16,7 @@ export default function DashboardPage({ onMonthClick }: DashboardPageProps) {
   const [data, setData] = useState<NormalizedSummaryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiForecast, setAiForecast] = useState<{ monthIndex: number; value: number }[] | null>(null);
 
   useEffect(() => {
     getMonthlySummary()
@@ -36,6 +38,74 @@ export default function DashboardPage({ onMonthClick }: DashboardPageProps) {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (!data) return;
+
+    getInsightsForecast()
+      .then((insights) => {
+        if (!insights || insights.length === 0) {
+          setAiForecast(null);
+          return;
+        }
+
+        // Group by forecasted month
+        const monthlyForecasts: { [month: string]: number } = {};
+        insights.forEach((insight: any) => {
+          if (insight.type !== 'forecast') return;
+          // Parse value from content, e.g. "wynoszą 1250.00 PLN"
+          const match = insight.content.match(/wynoszą\s+([\d.]+)\s+PLN/);
+          if (match) {
+            const val = parseFloat(match[1]);
+            if (!isNaN(val)) {
+              const date = new Date(insight.created_at);
+              const year = date.getFullYear();
+              const month = date.getMonth();
+              // Forecasted month is next month
+              const nextMonthDate = new Date(year, month + 1, 1);
+              const nextYear = nextMonthDate.getFullYear();
+              const nextMonthStr = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+              const forecastMonth = `${nextYear}-${nextMonthStr}`;
+              
+              monthlyForecasts[forecastMonth] = (monthlyForecasts[forecastMonth] || 0) + val;
+            }
+          }
+        });
+
+        // Map to { monthIndex, value } where value is predicted stan_konta
+        const points = data
+          .map((d, index) => {
+            const totalSpentForecast = monthlyForecasts[d.month];
+            if (totalSpentForecast === undefined) return null;
+
+            // Compute predicted stan_konta
+            if (index > 0) {
+              const prevBalance = data[index - 1].stan_konta;
+              if (prevBalance !== null) {
+                const value = prevBalance + d.przychody - totalSpentForecast;
+                return { monthIndex: index, value };
+              }
+            }
+            // Fallback for index 0
+            if (d.stan_konta !== null) {
+              const value = d.stan_konta + d.przychody - totalSpentForecast;
+              return { monthIndex: index, value };
+            }
+            return null;
+          })
+          .filter((p): p is { monthIndex: number; value: number } => p !== null);
+
+        if (points.length > 0) {
+          setAiForecast(points);
+        } else {
+          setAiForecast(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load AI forecast data:', err);
+        setAiForecast(null);
+      });
+  }, [data]);
 
   const predictionData = useMemo(() => {
     if (!data) return [];
@@ -90,6 +160,8 @@ export default function DashboardPage({ onMonthClick }: DashboardPageProps) {
         <p className="text-slate-400 text-sm">Przegląd analizy finansowej</p>
       </div>
 
+      <InsightsWidget />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Balance Over Time */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
@@ -104,7 +176,7 @@ export default function DashboardPage({ onMonthClick }: DashboardPageProps) {
           <h3 className="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider">
             Przychody, wydatki i predykcja
           </h3>
-          <ComboChart data={data} prediction={predictionData} onMonthClick={onMonthClick} />
+          <ComboChart data={data} prediction={predictionData} aiForecast={aiForecast || undefined} onMonthClick={onMonthClick} />
         </div>
 
         {/* Savings Over Time */}
