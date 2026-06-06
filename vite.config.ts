@@ -46,6 +46,12 @@ export default defineConfig({
         changeOrigin: true,
         bypass: spaBypass,
       },
+      '/assets': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        bypass: spaBypass,
+      },
     },
   },
 });
+
