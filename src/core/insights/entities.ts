@@ -1,5 +1,8 @@
+import type { Transaction } from '../ledger/entities';
+
 export type InsightType = 'alert' | 'tip' | 'trend' | 'forecast';
 export type PriorityType = 'high' | 'medium' | 'low';
+export type Priority = PriorityType;
 
 export interface Insight {
   id: string;
@@ -30,3 +33,8 @@ export interface ForecastResult {
   confidence: string; // postgres NUMERIC is string in JS/TS
   trend: 'up' | 'down' | 'flat';
 }
+
+export interface TransactionData extends Transaction {
+  category_name: string | null;
+}
+

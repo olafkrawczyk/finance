@@ -605,22 +605,13 @@ insightsRoutes.get('/', requireAuth, async (c) => {
 | A3 | The `analysis_queue` receives only `{ transaction_id }` payloads (as stated in D-06 and verified in `use-cases.ts` line 21) | Architecture Patterns | If some other code path enqueues messages with different payloads, the worker needs to handle multiple message formats |
 | A4 | OpenRouter `response_format: json_schema` with `strict: true` is supported by both Claude Sonnet 4 and DeepSeek R1 | Architecture Patterns | If one model doesn't support structured output, the JSON parsing becomes less reliable and Zod validation catches more errors |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **DeepSeek R1 free tier availability**
-   - What we know: The OpenRouter API returns `deepseek/deepseek-r1` with `is_free: false`. The free variant `deepseek/deepseek-r1:free` is documented in Context7's free-router guide. The exact availability may change.
-   - What's unclear: Whether `:free` variant is always available, or if it's rate-limited to the point of being unusable for this use case.
-   - Recommendation: Default to `deepseek/deepseek-r1:free` but make it env-var configurable. If free tier is unreliable, user can switch to `deepseek/deepseek-r1` (paid). The worker should gracefully degrade if R1 is unavailable — Claude can still generate narrative insights without numerical forecasts.
+1. **DeepSeek R1 free tier availability** — RESOLVED: Default to `deepseek/deepseek-r1:free` with env-var override (`OPENROUTER_FORECAST_MODEL`). Worker gracefully degrades (Claude generates narrative insights without numerical forecasts if R1 unavailable).
 
-2. **Insight dedup window**
-   - What we know: D-14 says "Worker deduplicates against similar recent insights before insert." The time window for "recent" is not specified.
-   - What's unclear: Should dedup check the last 7 days, 30 days, or all time? If the user's spending pattern genuinely repeats (e.g., same category overspend two months in a row), should both insights be generated?
-   - Recommendation: Use a 14-day dedup window by default. Insights with identical type + title + content hash within 14 days are skipped. After 14 days, the insight can reappear (spending patterns can genuinely repeat). This is configurable as a constant in the worker.
+2. **Insight dedup window** — RESOLVED: Use a 14-day dedup window. Insights with identical type + title + content hash within 14 days are skipped. After 14 days, the insight can reappear (spending patterns can genuinely repeat). Window duration is a named constant in the worker.
 
-3. **On-demand generation queue priority**
-   - What we know: D-05 says nightly batch + on-demand generation from UI. Both go through `analysis_queue`.
-   - What's unclear: Should on-demand jobs be processed ahead of accumulated nightly messages? PGMQ doesn't have priority queues.
-   - Recommendation: Use a separate queue (`insights_manual_queue`) for on-demand generation. This avoids the on-demand job getting stuck behind a backlog of nightly messages. The worker reads from both queues, prioritizing `insights_manual_queue`.
+3. **On-demand generation queue priority** — RESOLVED: Use a separate `insights_manual_queue` for on-demand generation. The worker reads from both queues, prioritizing `insights_manual_queue` to avoid on-demand jobs getting stuck behind nightly batch backlog.
 
 ## Environment Availability
 

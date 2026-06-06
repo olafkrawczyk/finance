@@ -302,13 +302,12 @@ export function findLinks(
 
   const textToSearch = `${title} ${content}`.toLowerCase();
 
-  const uniqueCategories = new Map<string, string>(); // name -> id
+  const uniqueCategories = new Map<string, string>();
   for (const t of transactions) {
     if (t.category_id && t.category_name) {
       uniqueCategories.set(t.category_name.toLowerCase(), t.category_id);
     }
   }
-
   for (const [name, id] of uniqueCategories.entries()) {
     if (textToSearch.includes(name)) {
       categoryIds.push(id);

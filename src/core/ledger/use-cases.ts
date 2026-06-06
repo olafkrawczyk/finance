@@ -32,8 +32,9 @@ export async function listTransactions(params: {
   type?: string;
   date_from?: string;
   date_to?: string;
+  uncategorized?: boolean;
 }): Promise<{ rows: Transaction[]; total: number }> {
-  const { page, per_page, account_id, type, date_from, date_to } = params;
+  const { page, per_page, account_id, type, date_from, date_to, uncategorized } = params;
   const offset = (page - 1) * per_page;
 
   const rows = await sql`
@@ -43,6 +44,7 @@ export async function listTransactions(params: {
       ${type ? sql`AND type = ${type}` : sql``}
       ${date_from ? sql`AND date >= ${date_from}` : sql``}
       ${date_to ? sql`AND date <= ${date_to}` : sql``}
+      ${uncategorized ? sql`AND category_id IS NULL` : sql``}
     ORDER BY date DESC, created_at DESC
     LIMIT ${per_page} OFFSET ${offset}
   `;
@@ -53,6 +55,7 @@ export async function listTransactions(params: {
       ${type ? sql`AND type = ${type}` : sql``}
       ${date_from ? sql`AND date >= ${date_from}` : sql``}
       ${date_to ? sql`AND date <= ${date_to}` : sql``}
+      ${uncategorized ? sql`AND category_id IS NULL` : sql``}
   `;
   return { rows: rows as Transaction[], total: Number(count) };
 }

@@ -39,6 +39,7 @@ export const ListTransactionsQuerySchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']).optional(),
   date_from: z.iso.date().optional(),
   date_to: z.iso.date().optional(),
+  uncategorized: z.coerce.boolean().optional(),
 });
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
