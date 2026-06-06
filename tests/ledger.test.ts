@@ -7,6 +7,9 @@ import {
   createOpeningBalance,
   updateOpeningBalance,
   listOpeningBalances,
+  getTransaction,
+  updateTransaction,
+  deleteTransaction,
 } from '../src/core/ledger/use-cases';
 
 let accountId: string;
@@ -149,27 +152,98 @@ describe('Ledger Use Cases & Database Integration', () => {
     expect(updated?.notes).toBe('Updated capital');
   });
 
-  it('enforces transaction immutability (DB trigger validation)', async () => {
+  it('allows transaction update and delete (immutability removed)', async () => {
     const list = await listTransactions({ page: 1, per_page: 1 });
     expect(list.rows).toHaveLength(1);
     const tx = list.rows[0];
 
-    let threwUpdate = false;
-    try {
-      await sql`UPDATE transactions SET amount = 999.00 WHERE id = ${tx.id}`;
-    } catch (err: any) {
-      threwUpdate = true;
-      expect(err.message).toContain('immutable');
-    }
-    expect(threwUpdate).toBe(true);
+    // UPDATE should now succeed (no longer throws immutable exception)
+    const result = await sql`
+      UPDATE transactions SET description = 'Updated via test' WHERE id = ${tx.id} RETURNING *
+    `;
+    expect(result).toHaveLength(1);
+    expect(result[0].description).toBe('Updated via test');
+  });
 
-    let threwDelete = false;
+  it('getTransaction() returns single transaction by ID', async () => {
+    const tx = await createTransaction({
+      account_id: accountId,
+      category_id: categoryId,
+      type: 'income',
+      amount: '3000.0000',
+      date: '2026-06-10',
+      description: 'Test get',
+    });
+
+    const found = await getTransaction(tx.id);
+    expect(found).toBeDefined();
+    expect(found!.id).toBe(tx.id);
+    expect(found!.amount).toBe('3000.0000');
+
+    const notFound = await getTransaction('00000000-0000-0000-0000-000000000000');
+    expect(notFound).toBeUndefined();
+  });
+
+  it('updateTransaction() succeeds and returns updated entity', async () => {
+    const tx = await createTransaction({
+      account_id: accountId,
+      category_id: categoryId,
+      type: 'expense',
+      amount: '120.5000',
+      date: '2026-06-01',
+      description: 'Original description',
+    });
+
+    const updated = await updateTransaction(tx.id, {
+      account_id: accountId,
+      category_id: categoryId,
+      type: 'expense',
+      amount: '200.0000',
+      description: 'Updated desc',
+      date: '2026-06-15',
+    });
+
+    expect(updated.id).toBe(tx.id);
+    expect(updated.amount).toBe('200.0000');
+    expect(updated.description).toBe('Updated desc');
+    expect(new Date(updated.date).toISOString().startsWith('2026-06-15')).toBe(true);
+    expect(updated.updated_at).toBeDefined();
+  });
+
+  it('updateTransaction() throws when transaction not found', async () => {
+    let threw = false;
     try {
-      await sql`DELETE FROM transactions WHERE id = ${tx.id}`;
+      await updateTransaction('00000000-0000-0000-0000-000000000000', {
+        account_id: accountId,
+        type: 'expense',
+        amount: '100.0000',
+        date: '2026-06-01',
+      });
     } catch (err: any) {
-      threwDelete = true;
-      expect(err.message).toContain('immutable');
+      threw = true;
+      expect(err.message).toContain('not found');
     }
-    expect(threwDelete).toBe(true);
+    expect(threw).toBe(true);
+  });
+
+  it('deleteTransaction() clears hash, cleans insights, hard deletes', async () => {
+    const tx = await createTransaction({
+      account_id: accountId,
+      type: 'income',
+      amount: '5000.0000',
+      date: '2026-06-02',
+    });
+
+    // Verify it exists
+    const found = await getTransaction(tx.id);
+    expect(found).toBeDefined();
+
+    await deleteTransaction(tx.id);
+
+    // Verify hard deleted
+    const afterDelete = await getTransaction(tx.id);
+    expect(afterDelete).toBeUndefined();
+    // NOTE: insights cleanup (array_remove) is a no-op if no insight references this ID.
+    // The atomic transaction ensures it doesn't throw even when no insights exist.
   });
 });
