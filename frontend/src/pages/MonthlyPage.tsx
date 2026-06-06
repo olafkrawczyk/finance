@@ -24,7 +24,10 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
   const dateFrom = `${yearStr}-${monthStr}-01`;
-  const dateTo = `${yearStr}-${monthStr}-31`;
+  // Compute the real last day of the month: new Date(year, month, 0) gives day 0
+  // of the following month, which is the last day of the current month.
+  const lastDay = new Date(year, month, 0).getDate();
+  const dateTo = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
   // Format month heading in Polish or general English depending on locale
   const getMonthName = (m: number) => {
