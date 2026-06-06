@@ -1,15 +1,24 @@
 # Roadmap: Financial Planning App
 
 ## Phase 1: Foundation (Core Ledger & DB)
+
 **Goal:** Establish the immutable ledger and database schema.
 **Plans:** 3 plans
-
 Plans:
+**Wave 1**
+
 - [ ] 01-01-PLAN.md — Environment + DB foundation: Bun install, Postgres+PGMQ (Docker), schema, 25-category seed, health check
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Domain layer: entities, Zod v4 schemas, ledger + opening-balance use-cases, monthly summary
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-03-PLAN.md — Core API: Hono routes (transactions, summary, opening-balance CRUD, reference), Bun server entry
 
 ## Phase 2: Ingestion & Auth
+
 **Goal:** Implement user authentication and LLM-powered bank CSV import.
 
 - [ ] Integrate Better Auth for OAuth/SSO (Google/GitHub).
@@ -23,6 +32,7 @@ Plans:
 - [ ] **Verification:** Import both sample CSVs (`ing.csv`, `ipko.csv`). Verify correct transaction count, no duplicates on re-import, Blokada rows skipped.
 
 ## Phase 3: Views & Categorization
+
 **Goal:** Build the frontend matching the budget.xlsx views exactly.
 
 - [ ] **Zbiorczy view:** Table with month | wydatki | przychody | stan konta | wydatki bez kosztów stałych | zaoszczędzone | zaoszczędzone log.
@@ -33,6 +43,7 @@ Plans:
 - [ ] **Verification:** Import ing.csv + ipko.csv, categorize, verify Zbiorczy numbers match a known month from budget.xlsx.
 
 ## Phase 4: AI Insights & Forecasting
+
 **Goal:** Integrate OpenRouter for advanced financial analysis.
 
 - [ ] Setup OpenRouter API integration.
@@ -42,6 +53,7 @@ Plans:
 - [ ] **Verification:** Generate insights for a sample dataset and verify JSON parsing.
 
 ## Phase 5: Polishing & Deployment
+
 **Goal:** Prepare for production use.
 
 - [ ] Comprehensive E2E testing.

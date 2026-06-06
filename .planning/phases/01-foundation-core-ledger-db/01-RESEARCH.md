@@ -715,7 +715,7 @@ The existing `01-01-PLAN.md`, `01-02-PLAN.md`, `01-03-PLAN.md` are being replace
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Docker availability on WSL**
    - What we know: Docker Desktop for Windows is installed; WSL integration status is unknown.
