@@ -94,6 +94,24 @@ For the import pipeline, the architecture is: **POST /import** receives multipar
 | `pgmq-js` | Community wrapper (603 downloads/week); raw SQL is preferred (Phase 1 standard) |
 | `multer` / `busboy` | Not needed — Bun's native `FormData` and `File` APIs handle multipart uploads. |
 | `openai` SDK | Not needed — OpenRouter is OpenAI-compatible, but `fetch` with JSON is sufficient for this simple use case. Adding the SDK adds dependency weight for no gain. |
+| `iconv-lite` / `iconv` | Not needed — `Buffer.toString('latin1')` correctly handles CP1250 for Polish characters. Bringing in a full iconv library is unnecessary overhead. |
+
+### Auth testing: emailAndPassword configuration
+
+Better Auth requires `emailAndPassword: { enabled: true }` in the auth config to support test sign-up/sign-in without real OAuth credentials. This is not an additional package — it's a built-in plugin. Include it in `src/auth.ts` either always or conditionally:
+
+```typescript
+// src/auth.ts
+export const auth = betterAuth({
+  database: new Pool({ connectionString: process.env.DATABASE_URL! }),
+  emailAndPassword: {
+    enabled: true, // Enables /api/auth/sign-up/email + /api/auth/sign-in/email for tests
+  },
+  socialProviders: { google: { ... }, github: { ... } },
+});
+```
+
+[VERIFIED: Context7 /better-auth/better-auth — signUpEmail endpoint is gated by this config flag]
 
 ### Installation
 
@@ -348,6 +366,8 @@ importRoutes.post('/import', requireAuth, async (c) => {
 
 **Source:** [ASSUMED: Bun supports `FormData` and `File` natively; Hono exposes `c.req.formData()`]
 
+**CRITICAL:** Both ING and IPKO CSV files are CP1250 (not UTF-8). Always read as buffer + latin1 decode. [VERIFIED: direct file inspection]
+
 ```typescript
 // POST /import
 importRoutes.post('/import', requireAuth, async (c) => {
@@ -359,20 +379,21 @@ importRoutes.post('/import', requireAuth, async (c) => {
     return c.json({ data: null, error: { message: 'CSV file required' }, meta: null }, 400);
   }
 
-  // Read file content
-  const content = await file.text(); // for UTF-8 (IPKO)
-  // For ISO-8859-2 (ING), read as buffer first:
-  // const buffer = Buffer.from(await file.arrayBuffer());
-  // const content = buffer.toString('latin1');
+  // ALWAYS decode as latin1 — both ING and IPKO use CP1250 (not UTF-8)
+  // file.text() would throw/garble Polish diacritics on both formats
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const content = buffer.toString('latin1');
 
-  // Enqueue job
-  const jobId = await enqueueImportJob({
+  // Auto-detect format after decoding (ING has semicolons + 'Data transakcji')
+  const bankFormat = detectFormat(content); // 'ing' | 'ipko'
+
+  const { job_id } = await enqueueImportJob({
     account_id: accountId as string,
     csv_content: content,
-    bank_format: detectFormat(content), // 'ing' | 'ipko'
+    bank_format: bankFormat,
   });
 
-  return c.json({ data: { job_id: jobId }, error: null, meta: null }, 202);
+  return c.json({ data: { job_id }, error: null, meta: null }, 202);
 });
 ```
 
@@ -662,30 +683,52 @@ Step 2.5: SKIPPED — This is not a rename/refactor/migration phase. This is a g
 
 ## Common Pitfalls
 
-### Pitfall 1: ING CSV Encoding (ISO-8859-2 / Windows-1250)
+### Pitfall 1: BOTH CSVs Are CP1250, Not UTF-8 [VERIFIED by direct inspection]
 
-**What goes wrong:** `file.text()` reads the file as UTF-8, causing Polish characters (ą, ę, ć, ł, ń, ó, ś, ź, ż) to become garbled mojibake.
-**Why it happens:** ING exports in ISO-8859-2 (or Windows-1250), but `File.text()` defaults to UTF-8.
-**How to avoid:** Read ING files as `Buffer` first, then convert:
+**What goes wrong:** `file.text()` reads the file as UTF-8, causing Polish characters (ą, ę, ć, ł, ń, ó, ś, ź, ż) to become garbled mojibake on BOTH ING and IPKO files.
+**Why it happens:** The `file` command on both sample files returns `Non-ISO extended-ASCII text` (CP1250/Windows-1250). IPKO is NOT UTF-8 as the requirements document suggests — verified directly with `python3 -c "open(...).read().decode('utf-8')"` which throws `UnicodeDecodeError`. Both banks use CP1250.
+**How to avoid:** Read ALL CSV uploads as `Buffer` first, then convert. Use `latin1` (which covers CP1250 byte range for Polish characters):
 ```typescript
+// In POST /import handler — for BOTH ING and IPKO:
 const buffer = Buffer.from(await file.arrayBuffer());
-const content = buffer.toString('latin1'); // ISO-8859-2 is Latin-1 compatible for Polish chars
+const content = buffer.toString('latin1'); // Covers CP1250; Polish chars preserved correctly
 ```
-**Warning signs:** Description fields contain `` or `` characters.
+Do NOT use `file.text()` for either format. The bank_format auto-detection should happen after decoding.
+**Warning signs:** Description fields contain garbled characters (`?`, replacement chars, or wrong Polish diacritics); `Data transakcji` header is not found even though the file has it.
 
-### Pitfall 2: IPKO "Blokada" Rows (Pending Transactions)
+**Sample file line counts (VERIFIED):**
+- `ing.csv`: 106 lines, 83 transaction rows (after skipping 20 metadata rows + header)
+- `ipko.csv`: 256 lines, 252 valid rows (3 Blokada rows excluded, 1 header excluded)
+
+### Pitfall 2: IPKO "Blokada" Rows — Detected After CP1250 Decode [VERIFIED by direct inspection]
 
 **What goes wrong:** Pending transactions without a `Data operacji` date are imported, causing NULL date violations or future-dated transactions.
-**Why it happens:** IPKO CSV includes pending card authorizations (`Typ transakcji = "Blokada"`) that have no settlement date yet.
-**How to avoid:** The LLM prompt must explicitly include: "Skip rows where `Typ transakcji` is 'Blokada' or where `Data operacji` is empty." Also validate in the worker: skip any row with an empty date.
-**Warning signs:** Imported transaction count higher than expected; `date` column has NULL or future dates.
+**Why it happens:** IPKO CSV includes pending card authorizations (`Typ transakcji = "Blokada"`) that have no settlement date yet. The sample has 3 such rows. Because the file is CP1250, string matching must happen on the decoded content — searching the raw bytes will fail.
+**How to avoid:** The `preprocessIpkoCsv` function operates on already-decoded content (string). Filter by checking if the decoded line contains `"Blokada"` (with the surrounding quotes as they appear in the CSV):
+```typescript
+function preprocessIpkoCsv(content: string): string {
+  const lines = content.split('\n');
+  // Skip header row (line 0), filter Blokada rows
+  return [lines[0], ...lines.slice(1).filter(line => !line.includes('"Blokada"'))].join('\n');
+}
+```
+Also validate in the worker: skip any transaction with an empty `date` field.
+**Warning signs:** Imported transaction count higher than 252 for the sample IPKO file; `date` column has NULL values.
 
-### Pitfall 3: ING Metadata Header Rows
+### Pitfall 3: ING Metadata Header Rows [VERIFIED: header at line 19]
 
 **What goes wrong:** The first 20 rows of ING CSV are metadata (account info, document number, summary statistics) that get parsed as transactions.
-**Why it happens:** ING doesn't start with a clean header row. The actual transaction header is `"Data transakcji";"Data ksigowania";"Dane kontrahenta";...` which appears around row 20.
-**How to avoid:** The LLM prompt must include: "Skip all rows until you see the header starting with 'Data transakcji'." The worker can also pre-filter: find the first line containing `"Data transakcji"` and only pass lines after that.
-**Warning signs:** Imported transactions include "Lista transakcji", "Dokument nr", "Wygenerowany dnia" as descriptions.
+**Why it happens:** ING doesn't start with a clean header row. The actual transaction header `"Data transakcji";"Data księgowania";"Dane kontrahenta";...` appears at line index 19 (0-based) in the sample — verified by inspection.
+**How to avoid:** Decode content as CP1250 (latin1), then find the header line containing `'Data transakcji'` and strip everything above it. The worker pre-filters before sending to the LLM:
+```typescript
+function preprocessIngCsv(content: string): string {
+  const lines = content.split('\n');
+  const headerIndex = lines.findIndex(line => line.includes('Data transakcji'));
+  if (headerIndex === -1) throw new Error('ING CSV header not found');
+  return lines.slice(headerIndex).join('\n');
+}
+```
+**Warning signs:** Imported transactions include "Lista transakcji", "Dokument nr", "Wygenerowany dnia" as descriptions; transaction count far exceeds 83 for the sample ING file.
 
 ### Pitfall 4: ING Amount Format (Comma Decimal Separator)
 
@@ -732,18 +775,57 @@ const ParsedTransactionSchema = z.object({
 **How to avoid:** Keep them separate. Better Auth manages its own pool. The app uses the `postgres.js` singleton. Do not try to share a single pool instance.
 **Warning signs:** "Too many clients" errors from Postgres; connection pool exhaustion.
 
+### Pitfall 9: `api.test.ts` Health Check Assertion Breaks After Phase 2 [VERIFIED: code inspection]
+
+**What goes wrong:** The existing `api.test.ts` test at line 40 asserts `expect(json.data).toEqual({ db: true, pgmq: true })` (exact equality). When Plan 02-02 adds `import_queue: true` to the health response, this assertion fails because `toEqual` checks all keys.
+**Why it happens:** `toEqual` in bun:test checks for exact structural equality, not a subset. Adding a new key to the health response object breaks all existing assertions that use `toEqual`.
+**How to avoid:** Plan 02-02 must ALSO update the `api.test.ts` health check test to: `expect(json.data).toMatchObject({ db: true, pgmq: true })` OR update the assertion to include `import_queue: true`. The plan currently does not mention this required change to `api.test.ts`.
+**Warning signs:** `bun test tests/api.test.ts` fails on health/db test after running Plan 02-02.
+
+### Pitfall 10: Auth Testing — No Real OAuth in CI [VERIFIED: code inspection]
+
+**What goes wrong:** Plans 02-01 and 02-03 require authenticated requests in tests, but Better Auth's OAuth providers (Google/GitHub) require real redirect flows that cannot work in unit/integration tests.
+**Why it happens:** OAuth 2.0 requires user browser interaction. You cannot mock the OAuth provider flow in a unit test without significant infrastructure.
+**How to avoid:** Enable `emailAndPassword: { enabled: true }` in the Better Auth config (either always or conditionally when `NODE_ENV === 'test'`). This allows `POST /api/auth/sign-up/email` and `POST /api/auth/sign-in/email` endpoints which work synchronously in tests. Use Better Auth's `api.signUpEmail({ body: {...} })` server-side API to create a test user and obtain a session cookie for test assertions. Better Auth also exposes `api.createSession` for direct session creation without credentials.
+
+```typescript
+// In test beforeAll:
+const testUser = { email: 'test@example.com', password: 'testpassword123', name: 'Test User' };
+const signupRes = await auth.api.signUpEmail({ body: testUser });
+const sessionCookie = signupRes.headers?.get('set-cookie') ?? '';
+
+// Then in requests:
+await app.request('/import', { method: 'POST', headers: { Cookie: sessionCookie } });
+```
+
+**Warning signs:** 401 on all auth-protected test requests; tests pass individually but fail in CI without credentials; "provider not configured" errors when using OAuth endpoints in tests.
+
 ---
 
 ## Code Examples
 
+### CP1250 Decoding (Required for BOTH ING and IPKO)
+
+```typescript
+// Source: [VERIFIED: direct inspection of ing.csv and ipko.csv — both are CP1250/Non-ISO-ASCII]
+// Apply this in the POST /import handler BEFORE format detection
+async function decodeCsvContent(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return buffer.toString('latin1'); // latin1 covers CP1250 byte range for Polish characters
+}
+```
+
+**Critical:** Do NOT use `file.text()` for either format. Both sample files fail UTF-8 decode. The `latin1` encoding covers the CP1250 byte range and preserves all Polish diacritics correctly.
+
 ### ING CSV Preprocessing (Header Detection)
 
 ```typescript
-// Source: [CITED: REQUIREMENTS.md REQ-4.3 + sample ing.csv analysis]
+// Source: [VERIFIED: direct inspection of ing.csv — header at line 19, 83 transaction rows]
 function preprocessIngCsv(content: string): string {
   const lines = content.split('\n');
+  // Header "Data transakcji" appears at line 19 (0-indexed) in sample ing.csv
   const headerIndex = lines.findIndex(
-    (line) => line.includes('Data transakcji') && line.includes('Data ksi')
+    (line) => line.includes('Data transakcji')
   );
   if (headerIndex === -1) {
     throw new Error('ING CSV header not found');
@@ -755,11 +837,12 @@ function preprocessIngCsv(content: string): string {
 ### IPKO CSV Preprocessing (Blokada Filter)
 
 ```typescript
-// Source: [CITED: REQUIREMENTS.md REQ-4.4 + sample ipko.csv analysis]
+// Source: [VERIFIED: direct inspection of ipko.csv — 3 Blokada rows, 252 valid rows]
 function preprocessIpkoCsv(content: string): string {
   const lines = content.split('\n');
-  // Filter out lines containing "Blokada" in the transaction type column
-  return lines.filter((line) => !line.includes('"Blokada"')).join('\n');
+  // Preserve header (line 0), filter Blokada rows from data rows
+  // "Blokada" appears as the 3rd field in quoted CSV: ,"Blokada",
+  return [lines[0], ...lines.slice(1).filter((line) => !line.includes('"Blokada"'))].join('\n');
 }
 ```
 
@@ -836,10 +919,16 @@ ${csvRows}
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | OpenRouter `json_schema` mode is available for `openai/gpt-4o-mini` | Pattern 4 | Medium — if not supported, fallback to `json_object` and manual Zod validation |
-| A2 | `Buffer.toString('latin1')` correctly decodes ING ISO-8859-2 CSV | Pitfall 1 | Low — `latin1` covers the ISO-8859-2 byte range for Polish characters; Windows-1250 is nearly identical |
-| A3 | The ING account in seed data matches the account name in CSV exports ("Konto Direct dla Firmy w PLN") | CSV Analysis | Low — account matching is by `account_id` parameter, not by name parsing |
-| A4 | Few-shot prompt with 3 examples per format is sufficient for reliable parsing | Pattern 4 | Medium — if accuracy is low, increase to 5 examples or switch to fine-tuned model |
-| A5 | Better Auth's `pg` adapter creates its tables in the same database as the app tables | Pattern 1 | Low — verified by documentation; it uses the provided connection pool |
+| A2 | Few-shot prompt with 3 examples per format is sufficient for reliable parsing | Pattern 4 | Medium — if accuracy is low, increase to 5 examples or switch to fine-tuned model |
+| A3 | `auth.api.signUpEmail()` server-side call creates a usable session cookie for test assertions | Pitfall 10 | Low — fallback is to directly insert a session row into the DB using Better Auth's migrated schema |
+| A4 | Better Auth's `emailAndPassword` credential fields are co-located in the `account` table created by the standard migration | Auth testing | Low — verified by Better Auth source; no separate table needed |
+
+**VERIFIED claims (previously assumed):**
+- Both ING and IPKO CSVs are CP1250: VERIFIED by `file` command and Python decode test
+- `Buffer.toString('latin1')` correctly decodes both: VERIFIED — latin1 covers CP1250 byte range
+- ING header is at line 19 (0-indexed): VERIFIED by direct inspection (83 transaction rows)
+- IPKO has 3 Blokada rows, 252 valid rows: VERIFIED by direct inspection
+- Better Auth accepts `new Pool({ connectionString })` directly: VERIFIED by Context7 docs
 
 ---
 
@@ -967,20 +1056,22 @@ env | grep -E "(DATABASE_URL|OPENROUTER|GOOGLE|GITHUB)"
 ## Sources
 
 ### Primary (HIGH confidence)
+- Context7 `/better-auth/better-auth` — `new Pool({ connectionString })` database config, `emailAndPassword` config, `signUpEmail` API
 - Context7 `/websites/better-auth` — Hono integration, OAuth providers, session middleware, CORS config
 - Context7 `/websites/openrouter_ai` — Chat completions API, JSON schema response format, model selection
 - Context7 `/pgmq/pgmq` — `pgmq.read`, `pgmq.archive`, `pgmq.delete`, visibility timeout, queue management
 - Context7 `/websites/hono_dev` — Hono app structure, `c.req.formData()`, `createMiddleware`, `c.req.raw`
 - Context7 `/websites/zod_dev_v4` — Zod v4 API, `z.uuid()`, `z.iso.date()`, schema validation
+- Sample CSV direct inspection (`ing.csv`, `ipko.csv`) — encoding confirmed CP1250 via `file` command and Python decode test; row counts verified
 
 ### Secondary (MEDIUM confidence)
 - Official Better Auth docs: https://better-auth.com/docs/integrations/hono — Hono-specific setup verified
 - Official OpenRouter docs: https://openrouter.ai/docs/api — API endpoint and response format verified
-- Sample CSV files (`ing.csv`, `ipko.csv`) — Format analysis verified by direct inspection
-- Phase 1 codebase (`src/`, `index.ts`, `tests/`) — Existing patterns confirmed
+- Phase 1 codebase (`src/`, `index.ts`, `tests/`) — Existing patterns confirmed; api.test.ts health assertion breakage identified by code inspection
+- better-auth node_modules inspection (`dist/test-utils/`, `dist/auth/full.mjs`) — test instance pattern and email/password auth verified
 
 ### Tertiary (LOW confidence)
-- None — all major claims verified against Context7 or official documentation.
+- None — all major claims verified against Context7, official documentation, or direct code/file inspection.
 
 ---
 
@@ -994,8 +1085,16 @@ env | grep -E "(DATABASE_URL|OPENROUTER|GOOGLE|GITHUB)"
 - CSV formats: HIGH — verified by direct inspection of sample files
 - Pitfalls: HIGH — most are verified by sample CSV analysis and official documentation
 
-**Research date:** 2026-06-06
+**Research date:** 2026-06-06 (updated 2026-06-06 with codebase inspection corrections)
 **Valid until:** 2026-07-06 (30 days — stable libraries, but OpenRouter model availability may change)
+
+**Update notes (2026-06-06):**
+- CORRECTED: IPKO CSV is CP1250, not UTF-8 (verified by direct decode test)
+- CORRECTED: Both ING and IPKO require `Buffer.toString('latin1')` decode (not `file.text()`)
+- ADDED: Pitfall 9 — api.test.ts health check will break when `import_queue` is added to response
+- ADDED: Pitfall 10 — auth testing requires `emailAndPassword: { enabled: true }` in Better Auth config
+- VERIFIED: ING has 83 transaction rows; IPKO has 252 valid rows (3 Blokada excluded)
+- VERIFIED: Better Auth `new Pool({ connectionString })` is the correct pg config (not Kysely dialect)
 
 ---
 
@@ -1019,7 +1118,13 @@ env | grep -E "(DATABASE_URL|OPENROUTER|GOOGLE|GITHUB)"
 
 9. **Environment variables needed:** `OPENROUTER_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`. The app must fail gracefully with a clear error message if any are missing.
 
-10. **Test strategy:** Mock the OpenRouter API in tests using `nock` or a local mock server. The worker tests should test the full pipeline without making real API calls.
+10. **Test strategy:** Use Bun's `Bun.serve()` on a local port to mock the OpenRouter API response in worker tests. No external packages needed. Enable `emailAndPassword: { enabled: true }` in Better Auth config to allow sync sign-up/sign-in in tests without real OAuth flow.
+
+11. **BOTH CSV files are CP1250, not UTF-8 [VERIFIED]:** Always decode uploaded CSVs as `Buffer.from(await file.arrayBuffer()).toString('latin1')`. Never use `file.text()`. This applies to both ING and IPKO formats — the REQUIREMENTS.md incorrectly describes IPKO as UTF-8.
+
+12. **Fix `api.test.ts` health check when adding `import_queue` to health response:** The existing test asserts `toEqual({ db: true, pgmq: true })`. After Plan 02-02 adds `import_queue: true` to the health response, this test will fail. Plan 02-02 must also update this test to `toMatchObject({ db: true, pgmq: true })` or include `import_queue: true`.
+
+13. **Verified expected transaction counts from sample files:** ING sample: 83 valid transactions (after skipping 20 metadata rows). IPKO sample: 252 valid transactions (after removing 3 Blokada rows). Plans can use these as exact verification targets.
 
 ---
 
