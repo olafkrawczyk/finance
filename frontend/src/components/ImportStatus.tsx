@@ -49,11 +49,12 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
         });
     };
 
-    // Initial fetch
-    fetchStatus();
-
-    // Set up polling every 2s
+    // Assign the interval before the initial fetch so that if fetchStatus
+    // resolves synchronously, clearInterval(intervalId) has a valid id to clear.
     intervalId = setInterval(fetchStatus, 2000);
+
+    // Initial immediate fetch (after interval is assigned)
+    fetchStatus();
 
     return () => clearInterval(intervalId);
   }, [jobId]);
