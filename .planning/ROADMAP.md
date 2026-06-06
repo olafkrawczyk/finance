@@ -91,14 +91,24 @@ Plans:
 ## Phase 4.5: Spiked Features
 
 **Goal:** Implement transaction CRUD (edit/delete all fields).
-**Plans:** 2/2 plans — planned
+**Plans:** 2/2 plans complete
 
 **Wave 1** *(parallel — backend + frontend)*
 
-- [ ] 04.5-01-PLAN.md — Backend: schema migration (triggers, updated_at), entities, schemas, use-cases, API routes (GET/PUT/DELETE /transactions/:id), tests
-- [ ] 04.5-02-PLAN.md — Frontend: API client, TransactionTable action buttons, AddTransactionPage edit mode, MonthlyPage delete dialog + edit nav, App.tsx route
+- [x] 04.5-01-PLAN.md — Backend: schema migration (triggers, updated_at), entities, schemas, use-cases, API routes (GET/PUT/DELETE /transactions/:id), tests
+- [x] 04.5-02-PLAN.md — Frontend: API client, TransactionTable action buttons, AddTransactionPage edit mode, MonthlyPage delete dialog + edit nav, App.tsx route
 
 **Note:** Import dedup (`reference_id` column, LLM extraction) deferred per D-08/D-09. Not in scope for this phase.
+
+## Phase 4.6: Dashboard & Assets
+
+**Goal:** Implement new dashboard tiles for Total Net Value (with asset management) and Current Month Summary, and format chart values.
+**Plans:** 0/2 plans complete
+
+**Wave 1** *(parallel — backend + frontend)*
+
+- [ ] 04.6-01-PLAN.md — Backend: schema migration for assets table, Zod validation schemas, core asset use-cases, Hono API routes (GET/POST/PUT/DELETE /assets), integration tests
+- [ ] 04.6-02-PLAN.md — Frontend: Assets API client, Assets management page (CRUD), Dashboard tiles (Total Net Value and Current Month Summary), and chart formatting (Tooltip and Y-Axis)
 
 ## Phase 5: Polishing & Deployment
 
