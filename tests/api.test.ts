@@ -300,16 +300,13 @@ describe('HTTP API Endpoints Integration Tests', () => {
       expect(json.error.message).toBe('Transaction not found or already categorized');
     });
 
-    it('blocks general updates that modify other fields (db trigger check)', async () => {
-      // Trying to update the amount via sql UPDATE directly should fail due to trigger
-      let threw = false;
-      try {
-        await sql`UPDATE transactions SET amount = '90.0000' WHERE id = ${uncategorizedTxId}`;
-      } catch (err: any) {
-        threw = true;
-        expect(err.message).toContain('immutable');
-      }
-      expect(threw).toBe(true);
+    it('allows general updates (immutability removed — trigger now returns NEW)', async () => {
+      // UPDATE should now succeed (immutability trigger was modified to allow all updates)
+      const result = await sql`
+        UPDATE transactions SET amount = '90.0000' WHERE id = ${uncategorizedTxId} RETURNING *
+      `;
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(uncategorizedTxId);
     });
   });
 });
