@@ -122,8 +122,8 @@ export async function assignCategory(transactionId: string, categoryId: string) 
 
 export async function getOpeningBalance(year?: number, month?: number) {
   const searchParams = new URLSearchParams();
-  if (year) searchParams.set('year', String(year));
-  if (month) searchParams.set('month', String(month));
+  if (year != null) searchParams.set('year', String(year));
+  if (month != null) searchParams.set('month', String(month));
   const qs = searchParams.toString();
   const res = await fetch(`/opening-balance${qs ? '?' + qs : ''}`, { credentials: 'include' });
   if (!res.ok) {
