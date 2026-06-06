@@ -2,13 +2,12 @@
 
 ## Phase 1: Foundation (Core Ledger & DB)
 **Goal:** Establish the immutable ledger and database schema.
+**Plans:** 3 plans
 
-- [ ] Initialize Bun + Hono backend project.
-- [ ] Configure Postgres with PGMQ extension.
-- [ ] Implement double-entry ledger schema with `NUMERIC(19, 4)` precision.
-- [ ] Create Zod schemas for ledger transactions.
-- [ ] Build basic ledger API endpoints (Post, List).
-- [ ] **Verification:** Test zero-sum transaction constraints in DB.
+Plans:
+- [ ] 01-01-PLAN.md — Environment & Project Initialization (Walking Skeleton)
+- [ ] 01-02-PLAN.md — Ledger Schema & Database Logic
+- [ ] 01-03-PLAN.md — Ledger Core API
 
 ## Phase 2: Ingestion & Auth
 **Goal:** Implement user authentication and background data processing.
