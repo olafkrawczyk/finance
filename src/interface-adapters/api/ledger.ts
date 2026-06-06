@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { CreateTransactionSchema, ListTransactionsQuerySchema, AssignCategorySchema } from '../../application/schemas/ledger';
 import { createTransaction, listTransactions, getMonthlySummary } from '../../core/ledger/use-cases';
 import { requireAuth } from './auth';
 import sql from '../../infrastructure/db/client';
+
+const uuidSchema = z.uuid();
 
 export const ledgerRoutes = new Hono();
 
@@ -91,7 +94,15 @@ ledgerRoutes.patch(
   }),
   async (c) => {
     try {
-      const id = c.req.param('id');
+      const rawId = c.req.param('id');
+      const parseResult = uuidSchema.safeParse(rawId);
+      if (!parseResult.success) {
+        return c.json(
+          { data: null, error: { message: 'Invalid transaction id' }, meta: null },
+          400
+        );
+      }
+      const id = parseResult.data;
       const { category_id } = c.req.valid('json');
       const [updated] = await sql`
         UPDATE transactions SET category_id = ${category_id}
