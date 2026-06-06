@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS insights (
   linked_transaction_ids UUID[] NOT NULL DEFAULT '{}',
   linked_category_ids    UUID[] NOT NULL DEFAULT '{}',
   dismissed              BOOLEAN NOT NULL DEFAULT false,
-  dedup_hash             TEXT NOT NULL,
+  dedup_hash             TEXT NOT NULL UNIQUE,
   created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
