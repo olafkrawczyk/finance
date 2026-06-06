@@ -51,6 +51,16 @@ CREATE INDEX IF NOT EXISTS idx_mob_year_month  ON monthly_opening_balances(year,
 CREATE OR REPLACE FUNCTION block_immutable_change()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
+  -- Allow setting category_id on previously uncategorized rows
+  IF OLD.category_id IS NULL 
+     AND NEW.category_id IS NOT NULL 
+     AND OLD.amount = NEW.amount 
+     AND OLD.type = NEW.type 
+     AND OLD.date = NEW.date 
+     AND OLD.account_id = NEW.account_id 
+     AND OLD.description IS NOT DISTINCT FROM NEW.description THEN
+    RETURN NEW;
+  END IF;
   RAISE EXCEPTION 'Transactions are immutable. Use a correcting entry instead.';
 END;
 $$;
