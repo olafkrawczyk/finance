@@ -65,7 +65,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   mockServer.stop();
-  await sql.end();
 });
 
 describe('Import Worker End-to-End Tests', () => {

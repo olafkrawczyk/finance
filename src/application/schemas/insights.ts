@@ -24,7 +24,7 @@ export const R1ForecastResponseSchema = z.object({
 
 export const ListInsightsQuerySchema = z.object({
   type: z.enum(['alert', 'tip', 'trend', 'forecast']).optional(),
-  dismissed: z.coerce.boolean().optional(),
+  dismissed: z.coerce.boolean().default(false),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(20),
 });

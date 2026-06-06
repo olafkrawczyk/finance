@@ -44,11 +44,13 @@ app.get('/health/db', async (c) => {
 });
 
 import { importRoutes } from './src/interface-adapters/api/import';
+import { insightsRoutes } from './src/interface-adapters/api/insights';
 
 // Domain routes
 app.route('/transactions', ledgerRoutes);
 app.route('/opening-balance', openingBalanceRoutes);
 app.route('/import', importRoutes);
+app.route('/insights', insightsRoutes);
 app.route('/', referenceRoutes);
 
 // Export for test suites

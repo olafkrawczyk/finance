@@ -184,7 +184,7 @@ describe('Insights Schema Tests', () => {
         expect(result.data.page).toBe(1);
         expect(result.data.per_page).toBe(20);
         expect(result.data.type).toBeUndefined();
-        expect(result.data.dismissed).toBeUndefined();
+        expect(result.data.dismissed).toBe(false);
       }
     });
 
