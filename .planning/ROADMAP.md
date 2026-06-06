@@ -41,7 +41,7 @@ Plans:
 ## Phase 3: Views & Categorization
 
 **Goal:** Build the frontend matching the budget.xlsx views exactly.
-**Plans:** 2/7 plans executed
+**Plans:** 3/7 plans executed
 
 **Wave 1** *(parallel)*
 
@@ -50,7 +50,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-03-PLAN.md — UI Components: ZbiorczyTable, TransactionTable, MonthSidebar, CategoryDropdown
+- [x] 03-03-PLAN.md — UI Components: ZbiorczyTable, TransactionTable, MonthSidebar, CategoryDropdown
 - [ ] 03-04-PLAN.md — Chart Components: BalanceChart, ComboChart, SavingsChart, SavingsLogChart (Recharts)
 
 **Wave 3** *(blocked on Wave 2 completion)*
