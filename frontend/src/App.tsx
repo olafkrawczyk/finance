@@ -46,6 +46,12 @@ export default function App() {
       return <CategorizePage />;
     }
 
+    if (currentPath.startsWith('/transactions/') && currentPath.endsWith('/edit')) {
+      const segments = currentPath.split('/');
+      const transactionId = segments[2];
+      return <AddTransactionPage transactionId={transactionId} onSuccess={() => navigateTo('/dashboard')} />;
+    }
+
     if (currentPath === '/add') {
       return <AddTransactionPage onSuccess={() => navigateTo('/dashboard')} />;
     }

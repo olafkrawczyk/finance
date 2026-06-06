@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTransactions, getOpeningBalance, getCategories } from '../api';
+import { getTransactions, getOpeningBalance, getCategories, deleteTransaction } from '../api';
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
 import MonthSidebar from '../components/MonthSidebar';
 
@@ -19,6 +19,8 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTruncated, setIsTruncated] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Parse YYYY-MM into year and month components
   const [yearStr, monthStr] = yearMonth.split('-');
@@ -121,6 +123,36 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
       });
   }, [yearMonth]);
 
+  const handleEdit = (id: string) => {
+    window.history.pushState(null, '', `/transactions/${id}/edit`);
+    window.dispatchEvent(new Event('popstate'));
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeleteError(null);
+      await deleteTransaction(id);
+      setDeleteConfirmId(null);
+      const [txResult, freshCategories] = await Promise.all([
+        getTransactions({ date_from: dateFrom, date_to: dateTo, per_page: 500 }),
+        getCategories(),
+      ]);
+      const categoryMap = new Map<string, any>();
+      freshCategories.forEach((cat: any) => categoryMap.set(cat.id, cat));
+      const normalizedTx: NormalizedTransaction[] = txResult.data.map((t: any) => ({
+        id: t.id,
+        date: t.date,
+        description: t.description,
+        category_name: t.category_id ? (categoryMap.get(t.category_id)?.name ?? null) : null,
+        type: t.type,
+        amount: parseFloat(t.amount),
+      }));
+      setTransactions(normalizedTx);
+    } catch (err: any) {
+      setDeleteError(err.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -167,7 +199,12 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
               </p>
             </div>
           ) : (
-            <TransactionTable transactions={transactions} showCategory={true} />
+            <TransactionTable
+              transactions={transactions}
+              showCategory={true}
+              onEdit={handleEdit}
+              onDelete={(id) => setDeleteConfirmId(id)}
+            />
           )}
         </div>
 
@@ -181,6 +218,36 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
           />
         </div>
       </div>
+      {/* Delete confirmation dialog */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-slate-100 mb-2">Usuń transakcję</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              Czy na pewno chcesz usunąć tę transakcję? Tej operacji nie można cofnąć.
+            </p>
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-xs">
+                {deleteError}
+              </div>
+            )}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => { setDeleteConfirmId(null); setDeleteError(null); }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-500 transition-colors"
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
