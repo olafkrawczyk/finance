@@ -43,9 +43,12 @@ app.get('/health/db', async (c) => {
   return c.json({ data: result, error: null, meta: null });
 });
 
+import { importRoutes } from './src/interface-adapters/api/import';
+
 // Domain routes
 app.route('/transactions', ledgerRoutes);
 app.route('/opening-balance', openingBalanceRoutes);
+app.route('/import', importRoutes);
 app.route('/', referenceRoutes);
 
 // Export for test suites

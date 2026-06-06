@@ -3,6 +3,7 @@
     "@hono/zod-validator": "^0.8.0",
     "better-auth": "^1.6.14",
     "hono": "^4.12.23",
+    "iconv-lite": "^0.7.2",
     "postgres": "^3.4.9",
     "zod": "^4.4.3"
   },
