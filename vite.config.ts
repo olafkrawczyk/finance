@@ -23,6 +23,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/transactions': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/opening-balance': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 });

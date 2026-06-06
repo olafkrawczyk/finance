@@ -9,6 +9,8 @@
     "hono": "^4.12.23",
     "iconv-lite": "^0.7.2",
     "postgres": "^3.4.9",
+    "react-is": "^19.2.7",
+    "recharts": "^3.8.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
