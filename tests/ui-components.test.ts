@@ -3,6 +3,8 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import ImportUpload from '../frontend/src/components/ImportUpload';
 import ImportStatus from '../frontend/src/components/ImportStatus';
+import InsightCard from '../frontend/src/components/InsightCard';
+import InsightsTabs from '../frontend/src/components/InsightsTabs';
 
 describe('UI Component Rendering Tests', () => {
   it('renders ImportUpload component without crashing', () => {
@@ -25,5 +27,64 @@ describe('UI Component Rendering Tests', () => {
       })
     );
     expect(html).toContain('Loading job status...');
+  });
+
+  it('renders InsightsTabs without crashing', () => {
+    const html = renderToString(
+      React.createElement(InsightsTabs, {
+        activeType: 'all',
+        onTypeChange: () => {},
+      })
+    );
+    expect(html).toContain('All');
+    expect(html).toContain('Alerts');
+    expect(html).toContain('Trends');
+    expect(html).toContain('Tips');
+    expect(html).toContain('Forecasts');
+  });
+
+  it('renders InsightCard without crashing', () => {
+    const html = renderToString(
+      React.createElement(InsightCard, {
+        insight: {
+          id: 'test-id',
+          user_id: 'test-user',
+          type: 'alert',
+          priority: 'high',
+          title: 'Test Alert',
+          content: 'Test content',
+          dismissed: false,
+          created_at: new Date().toISOString(),
+          dedup_hash: 'abc',
+          linked_transaction_ids: [],
+          linked_category_ids: [],
+        },
+        onDismiss: () => {},
+      })
+    );
+    expect(html).toContain('Test Alert');
+    expect(html).toContain('Test content');
+  });
+
+  it('renders InsightCard dismissed state', () => {
+    const html = renderToString(
+      React.createElement(InsightCard, {
+        insight: {
+          id: 'test-id',
+          user_id: 'test-user',
+          type: 'alert',
+          priority: 'high',
+          title: 'Test Alert',
+          content: 'Test content',
+          dismissed: true,
+          created_at: new Date().toISOString(),
+          dedup_hash: 'abc',
+          linked_transaction_ids: [],
+          linked_category_ids: [],
+        },
+        onDismiss: () => {},
+      })
+    );
+    expect(html).toContain('Dismissed');
   });
 });

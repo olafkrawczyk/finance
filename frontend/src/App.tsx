@@ -6,6 +6,7 @@ import ZbiorczyPage from './pages/ZbiorczyPage';
 import MonthlyPage from './pages/MonthlyPage';
 import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
+import InsightsPage from './pages/InsightsPage';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -47,6 +48,10 @@ export default function App() {
 
     if (currentPath === '/add') {
       return <AddTransactionPage onSuccess={() => navigateTo('/dashboard')} />;
+    }
+
+    if (currentPath === '/insights') {
+      return <InsightsPage />;
     }
 
     if (currentPath === '/import') {
@@ -146,6 +151,16 @@ export default function App() {
               }`}
             >
               Import CSV
+            </button>
+            <button
+              onClick={() => navigateTo('/insights')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath.startsWith('/insights')
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Insights
             </button>
           </nav>
         </div>
