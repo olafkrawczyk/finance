@@ -64,3 +64,84 @@ DROP TRIGGER IF EXISTS trg_transactions_no_delete ON transactions;
 CREATE TRIGGER trg_transactions_no_delete
   BEFORE DELETE ON transactions FOR EACH ROW
   EXECUTE FUNCTION block_immutable_change();
+
+-- Better Auth tables
+CREATE TABLE IF NOT EXISTS "user" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "name"        TEXT NOT NULL,
+  "email"       TEXT NOT NULL UNIQUE,
+  "emailVerified" BOOLEAN NOT NULL,
+  "image"       TEXT,
+  "createdAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  "updatedAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "session" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "expiresAt"   TIMESTAMPTZ NOT NULL,
+  "token"       TEXT NOT NULL UNIQUE,
+  "createdAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  "updatedAt"   TIMESTAMPTZ NOT NULL,
+  "ipAddress"   TEXT,
+  "userAgent"   TEXT,
+  "userId"      TEXT NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "account" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "accountId"   TEXT NOT NULL,
+  "providerId"  TEXT NOT NULL,
+  "userId"      TEXT NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE,
+  "accessToken" TEXT,
+  "refreshToken" TEXT,
+  "idToken"     TEXT,
+  "accessTokenExpiresAt" TIMESTAMPTZ,
+  "refreshTokenExpiresAt" TIMESTAMPTZ,
+  "scope"       TEXT,
+  "password"    TEXT,
+  "createdAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  "updatedAt"   TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "verification" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "identifier"  TEXT NOT NULL,
+  "value"       TEXT NOT NULL,
+  "expiresAt"   TIMESTAMPTZ NOT NULL,
+  "createdAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  "updatedAt"   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "session_userId_idx" ON "session" ("userId");
+CREATE INDEX IF NOT EXISTS "account_userId_idx" ON "account" ("userId");
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification" ("identifier");
+
+-- Import jobs tracking table
+CREATE TABLE IF NOT EXISTS import_jobs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id    UUID NOT NULL REFERENCES accounts(id),
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  total_rows    INT,
+  processed     INT NOT NULL DEFAULT 0,
+  errors        TEXT[],
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_jobs_account ON import_jobs(account_id);
+CREATE INDEX IF NOT EXISTS idx_import_jobs_status ON import_jobs(status);
+
+-- Auto-update updated_at for import_jobs
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.updated_at = now();
+   RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+DROP TRIGGER IF EXISTS trg_update_import_jobs_updated_at ON import_jobs;
+CREATE TRIGGER trg_update_import_jobs_updated_at
+  BEFORE UPDATE ON import_jobs
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();

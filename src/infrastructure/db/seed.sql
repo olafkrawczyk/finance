@@ -43,3 +43,11 @@ BEGIN
     PERFORM pgmq.create('analysis_queue');
   END IF;
 END $$;
+
+-- Idempotent PGMQ queue initialization for import
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pgmq.list_queues() WHERE queue_name = 'import_queue') THEN
+    PERFORM pgmq.create('import_queue');
+  END IF;
+END $$;
