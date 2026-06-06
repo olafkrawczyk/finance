@@ -3,11 +3,11 @@
 ## Phase 1: Foundation (Core Ledger & DB)
 
 **Goal:** Establish the immutable ledger and database schema.
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Environment + DB foundation: Bun install, Postgres+PGMQ (Docker), schema, 25-category seed, health check
+- [x] 01-01-PLAN.md — Environment + DB foundation: Bun install, Postgres+PGMQ (Docker), schema, 25-category seed, health check
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
