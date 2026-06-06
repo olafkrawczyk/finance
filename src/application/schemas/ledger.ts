@@ -23,8 +23,12 @@ export const CreateOpeningBalanceSchema = z.object({
 export const UpdateOpeningBalanceSchema = CreateOpeningBalanceSchema.partial();
 
 // PATCH /transactions/:id/category
+// NOTE: category assignment is one-way (null → UUID). Once set, category_id
+// cannot be cleared through this endpoint. The DB trigger enforces this at
+// the persistence layer. A separate migration would be required to allow
+// removing a category assignment.
 export const AssignCategorySchema = z.object({
-  category_id: z.uuid(),
+  category_id: z.uuid(), // must be a non-null UUID; null is intentionally not accepted
 });
 
 // GET /transactions query params
