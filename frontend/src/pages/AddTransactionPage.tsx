@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCategories, getAccounts, createTransaction } from '../api';
+import { getCategories, getAccounts, createTransaction, getTransaction, updateTransaction } from '../api';
 import CategoryDropdown, { Category } from '../components/CategoryDropdown';
 
 interface Account {
@@ -11,19 +11,21 @@ interface Account {
 
 interface AddTransactionPageProps {
   onSuccess?: () => void;
+  transactionId?: string; // NEW — when provided, operates in edit mode
 }
 
-export default function AddTransactionPage({ onSuccess }: AddTransactionPageProps) {
+export default function AddTransactionPage({ onSuccess, transactionId }: AddTransactionPageProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categoryId, setCategoryId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(!!transactionId);
 
   useEffect(() => {
     Promise.all([getCategories(), getAccounts()])
@@ -38,6 +40,27 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
         setError(err.message || 'Failed to initialize categories or accounts');
       });
   }, []);
+
+  // Edit mode: fetch existing transaction and pre-fill form
+  useEffect(() => {
+    if (!transactionId) return;
+    setLoading(true);
+    Promise.all([getTransaction(transactionId), getCategories(), getAccounts()])
+      .then(([tx, catRows, accRows]) => {
+        setType(tx.type);
+        setCategoryId(tx.category_id || '');
+        setAmount(tx.amount);
+        setDescription(tx.description || '');
+        setDate(tx.date);
+        setCategories(catRows);
+        setAccounts(accRows);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to load transaction');
+        setLoading(false);
+      });
+  }, [transactionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,14 +88,25 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
 
     try {
       const formattedAmount = parseFloat(amount).toFixed(4);
-      await createTransaction({
-        account_id: defaultAccountId,
-        category_id: categoryId,
-        type,
-        amount: formattedAmount,
-        description: description.trim() || null,
-        date,
-      });
+      if (transactionId) {
+        await updateTransaction(transactionId, {
+          account_id: defaultAccountId,
+          category_id: categoryId,
+          type,
+          amount: formattedAmount,
+          description: description.trim() || null,
+          date,
+        });
+      } else {
+        await createTransaction({
+          account_id: defaultAccountId,
+          category_id: categoryId,
+          type,
+          amount: formattedAmount,
+          description: description.trim() || null,
+          date,
+        });
+      }
 
       setSuccess(true);
       setAmount('');
@@ -92,10 +126,19 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
 
   const isFormValid = categoryId && amount && parseFloat(amount) > 0 && date && accounts.length > 0;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+        <p className="text-slate-400 mt-4 text-sm ml-3">Loading transaction...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-semibold text-slate-100 font-medium">Dodaj</h2>
+        <h2 className="text-2xl font-semibold text-slate-100 font-medium">{transactionId ? 'Edytuj transakcję' : 'Dodaj'}</h2>
         <p className="text-slate-400 mt-2 text-sm">New Transaction</p>
       </div>
 
@@ -107,7 +150,7 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
 
       {success && (
         <div className="mb-6 p-4 bg-green-950/50 border border-green-800 rounded-lg text-green-300 text-sm">
-          Transaction added successfully!
+          {transactionId ? 'Transaction updated successfully!' : 'Transaction added successfully!'}
         </div>
       )}
 
@@ -121,10 +164,11 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
             id="type-select"
             className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-sm"
             value={type}
-            onChange={(e) => setType(e.target.value as 'income' | 'expense')}
+            onChange={(e) => setType(e.target.value as 'income' | 'expense' | 'transfer')}
           >
             <option value="expense">Wydatek</option>
             <option value="income">Przychód</option>
+            <option value="transfer">Przelew</option>
           </select>
         </div>
 
@@ -223,7 +267,7 @@ export default function AddTransactionPage({ onSuccess }: AddTransactionPageProp
               Adding Transaction...
             </span>
           ) : (
-            'Add Transaction'
+            transactionId ? 'Save Changes' : 'Add Transaction'
           )}
         </button>
       </form>
