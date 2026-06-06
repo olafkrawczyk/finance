@@ -70,10 +70,17 @@ CREATE TRIGGER trg_transactions_no_update
   BEFORE UPDATE ON transactions FOR EACH ROW
   EXECUTE FUNCTION block_immutable_change();
 
+CREATE OR REPLACE FUNCTION block_delete()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'Transactions are immutable. Deletes are not permitted.';
+END;
+$$;
+
 DROP TRIGGER IF EXISTS trg_transactions_no_delete ON transactions;
 CREATE TRIGGER trg_transactions_no_delete
   BEFORE DELETE ON transactions FOR EACH ROW
-  EXECUTE FUNCTION block_immutable_change();
+  EXECUTE FUNCTION block_delete();
 
 -- Better Auth tables
 CREATE TABLE IF NOT EXISTS "user" (
