@@ -88,6 +88,14 @@ Plans:
 
 **Verification:** Generate insights for a sample dataset and verify JSON parsing.
 
+## Phase 4.5: Spiked Features
+
+**Goal:** Implement transaction CRUD (edit/delete all fields) and fix import dedup (add `reference_id` to hash).
+
+- [ ] Backend: modify immutability triggers, add PUT/DELETE/GET single transaction endpoints, re-enqueue on edit
+- [ ] Frontend: add edit/delete UI to transaction table, wire to new endpoints
+- [ ] Import: add `reference_id` column, have LLM extract it from CSV, include in dedup hash
+
 ## Phase 5: Polishing & Deployment
 
 **Goal:** Prepare for production use.
