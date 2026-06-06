@@ -1,2 +1,7 @@
 .env
 node_modules/
+better-auth_migrations/
+frontend/dist/
+package-lock.json
+*.Zone.Identifier
+*.Identifier

@@ -20,21 +20,21 @@ Plans:
 ## Phase 2: Ingestion & Auth
 
 **Goal:** Implement user authentication and LLM-powered bank CSV import.
-**Plans:** 5 plans created
+**Plans:** 5/5 plans complete
 
 **Wave 1** *(parallel)*
 
-- [ ] 02-01-PLAN.md — Auth Foundation: Better Auth config (Google/GitHub OAuth), session middleware, requireAuth, protect all Phase 1 routes, auth tests
-- [ ] 02-02-PLAN.md — Import Schema & Domain: import_jobs table, PGMQ import_queue init, health check, ImportJob/ParsedTransaction entities, Zod schemas, schema tests
+- [x] 02-01-PLAN.md — Auth Foundation: Better Auth config (Google/GitHub OAuth), session middleware, requireAuth, protect all Phase 1 routes, auth tests
+- [x] 02-02-PLAN.md — Import Schema & Domain: import_jobs table, PGMQ import_queue init, health check, ImportJob/ParsedTransaction entities, Zod schemas, schema tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-03-PLAN.md — Import API: POST /import (multipart, enqueue PGMQ), GET /import/:job_id (status), import use-cases, import API + dedup tests
-- [ ] 02-04-PLAN.md — Import Worker: PGMQ polling loop, OpenRouter few-shot LLM parsing, ING/IPKO CSV preprocessing, batch insert (50 rows), SHA-256 dedup, worker + parse + LLM tests
+- [x] 02-03-PLAN.md — Import API: POST /import (multipart, enqueue PGMQ), GET /import/:job_id (status), import use-cases, import API + dedup tests
+- [x] 02-04-PLAN.md — Import Worker: PGMQ polling loop, OpenRouter few-shot LLM parsing, ING/IPKO CSV preprocessing, batch insert (50 rows), SHA-256 dedup, worker + parse + LLM tests
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-05-PLAN.md — Import UI: Vite + React + Tailwind setup, ImportUpload component (account/format/file selectors), ImportStatus component (polling, progress, errors), route wiring
+- [x] 02-05-PLAN.md — Import UI: Vite + React + Tailwind setup, ImportUpload component (account/format/file selectors), ImportStatus component (polling, progress, errors), route wiring
 
 **Verification:** Import both sample CSVs (`ing.csv`, `ipko.csv`). Verify correct transaction count, no duplicates on re-import, Blokada rows skipped.
 
