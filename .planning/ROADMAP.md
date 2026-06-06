@@ -41,7 +41,7 @@ Plans:
 ## Phase 3: Views & Categorization
 
 **Goal:** Build the frontend matching the budget.xlsx views exactly.
-**Plans:** 5/7 plans executed
+**Plans:** 7/7 plans complete
 
 **Wave 1** *(parallel)*
 
@@ -56,11 +56,11 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 03-05-PLAN.md — Data View Pages: DashboardPage (4 charts + LR prediction), ZbiorczyPage, MonthlyPage (drill-down)
-- [ ] 03-06-PLAN.md — Action Pages: CategorizePage (bulk-select + assign), AddTransactionPage (manual entry form)
+- [x] 03-06-PLAN.md — Action Pages: CategorizePage (bulk-select + assign), AddTransactionPage (manual entry form)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-07-PLAN.md — App Integration: routes, header nav, layout update, ImportStatus Categorize button, typography fix (font-extrabold → font-semibold)
+- [x] 03-07-PLAN.md — App Integration: routes, header nav, layout update, ImportStatus Categorize button, typography fix (font-extrabold → font-semibold)
 
 **Verification:** Import ing.csv + ipko.csv, categorize, verify Zbiorczy numbers match a known month from budget.xlsx.
 
