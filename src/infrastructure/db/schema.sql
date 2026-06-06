@@ -65,7 +65,7 @@ DROP TRIGGER IF EXISTS trg_transactions_no_delete ON transactions;
 DROP FUNCTION IF EXISTS block_delete();
 
 -- Add updated_at column for edit tracking (D-01)
-ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMPTZ;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
 
 -- Better Auth tables
 CREATE TABLE IF NOT EXISTS "user" (
@@ -207,4 +207,19 @@ DROP TRIGGER IF EXISTS trg_insights_no_update ON insights;
 CREATE TRIGGER trg_insights_no_update
   BEFORE UPDATE ON insights FOR EACH ROW
   EXECUTE FUNCTION block_insight_immutable_change();
+
+-- Manual asset lines (investments, cash, bonds, silver, etc.)
+CREATE TABLE IF NOT EXISTS assets (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT NOT NULL UNIQUE,
+  value      NUMERIC(19, 4) NOT NULL CHECK (value >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+DROP TRIGGER IF EXISTS trg_assets_updated_at ON assets;
+CREATE TRIGGER trg_assets_updated_at
+  BEFORE UPDATE ON assets FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 
