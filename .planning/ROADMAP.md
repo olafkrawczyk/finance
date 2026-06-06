@@ -41,12 +41,12 @@ Plans:
 ## Phase 3: Views & Categorization
 
 **Goal:** Build the frontend matching the budget.xlsx views exactly.
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 **Wave 1** *(parallel)*
 
 - [x] 03-01-PLAN.md — Backend API + Schema: immutability trigger relaxation, PATCH /transactions/:id/category, migration, schema push [BLOCKING]
-- [ ] 03-02-PLAN.md — Frontend foundations: Recharts + react-is install, Vite proxy routes, api.ts extension, linearRegression.ts utility
+- [x] 03-02-PLAN.md — Frontend foundations: Recharts + react-is install, Vite proxy routes, api.ts extension, linearRegression.ts utility
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
