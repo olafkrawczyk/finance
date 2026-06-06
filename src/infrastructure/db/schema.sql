@@ -47,21 +47,11 @@ CREATE INDEX IF NOT EXISTS idx_tx_category     ON transactions(category_id);
 CREATE INDEX IF NOT EXISTS idx_tx_date_type    ON transactions(date, type);
 CREATE INDEX IF NOT EXISTS idx_mob_year_month  ON monthly_opening_balances(year, month);
 
--- Immutability triggers (REQ-1.2)
+-- Immutability triggers (REQ-1.2) — modified to allow updates and deletes
 CREATE OR REPLACE FUNCTION block_immutable_change()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-  -- Allow setting category_id on previously uncategorized rows
-  IF OLD.category_id IS NULL 
-     AND NEW.category_id IS NOT NULL 
-     AND OLD.amount = NEW.amount 
-     AND OLD.type = NEW.type 
-     AND OLD.date = NEW.date 
-     AND OLD.account_id = NEW.account_id 
-     AND OLD.description IS NOT DISTINCT FROM NEW.description THEN
-    RETURN NEW;
-  END IF;
-  RAISE EXCEPTION 'Transactions are immutable. Use a correcting entry instead.';
+  RETURN NEW;  -- Allow all updates (immutability removed)
 END;
 $$;
 
@@ -70,17 +60,12 @@ CREATE TRIGGER trg_transactions_no_update
   BEFORE UPDATE ON transactions FOR EACH ROW
   EXECUTE FUNCTION block_immutable_change();
 
-CREATE OR REPLACE FUNCTION block_delete()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-  RAISE EXCEPTION 'Transactions are immutable. Deletes are not permitted.';
-END;
-$$;
-
+-- Remove delete block — hard deletes now allowed (D-07)
 DROP TRIGGER IF EXISTS trg_transactions_no_delete ON transactions;
-CREATE TRIGGER trg_transactions_no_delete
-  BEFORE DELETE ON transactions FOR EACH ROW
-  EXECUTE FUNCTION block_delete();
+DROP FUNCTION IF EXISTS block_delete();
+
+-- Add updated_at column for edit tracking (D-01)
+ALTER TABLE transactions ADD COLUMN updated_at TIMESTAMPTZ;
 
 -- Better Auth tables
 CREATE TABLE IF NOT EXISTS "user" (
@@ -162,6 +147,20 @@ CREATE TRIGGER trg_update_import_jobs_updated_at
   BEFORE UPDATE ON import_jobs
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- Auto-update updated_at for transactions
+CREATE OR REPLACE FUNCTION update_transaction_timestamp()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_transactions_updated_at ON transactions;
+CREATE TRIGGER trg_transactions_updated_at
+  BEFORE UPDATE ON transactions FOR EACH ROW
+  EXECUTE FUNCTION update_transaction_timestamp();
 
 -- Insights tracking table (AI-generated)
 CREATE TABLE IF NOT EXISTS insights (

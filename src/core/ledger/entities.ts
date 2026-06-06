@@ -12,6 +12,7 @@ export interface Transaction {
   transfer_to_account_id: string | null
   import_hash: string | null
   created_at: string                  // TIMESTAMPTZ as ISO string
+  updated_at: string | null           // TIMESTAMPTZ as ISO string, null until first edit
 }
 
 export interface MonthlyOpeningBalance {

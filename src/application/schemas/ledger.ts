@@ -11,6 +11,10 @@ export const CreateTransactionSchema = z.object({
   transfer_to_account_id: z.uuid().nullable().optional(),
 });
 
+// PUT /transactions/:id — same fields as create, all required
+export const UpdateTransactionSchema = CreateTransactionSchema;
+export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
+
 // POST /opening-balance
 export const CreateOpeningBalanceSchema = z.object({
   year: z.number().int().min(2000).max(2100),
@@ -43,6 +47,7 @@ export const ListTransactionsQuerySchema = z.object({
 });
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
+export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
 export type CreateOpeningBalanceInput = z.infer<typeof CreateOpeningBalanceSchema>;
 export type UpdateOpeningBalanceInput = z.infer<typeof UpdateOpeningBalanceSchema>;
 export type ListTransactionsQuery = z.infer<typeof ListTransactionsQuerySchema>;
