@@ -9,6 +9,7 @@
   },
   "workflow": {
     "auth": "OAuth/SSO",
-    "mode": "auto"
+    "mode": "auto",
+    "_auto_chain_active": false
   }
 }
