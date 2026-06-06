@@ -71,7 +71,7 @@ export async function getTransactions(params?: {
     throw new Error(`Failed to fetch transactions: ${res.statusText}`);
   }
   const json = await res.json();
-  return json.data;
+  return { data: json.data, meta: json.meta };
 }
 
 export async function getCategories() {

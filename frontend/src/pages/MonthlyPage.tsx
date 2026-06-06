@@ -18,6 +18,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isTruncated, setIsTruncated] = useState(false);
 
   // Parse YYYY-MM into year and month components
   const [yearStr, monthStr] = yearMonth.split('-');
@@ -47,7 +48,9 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
       getOpeningBalance(year, month),
       getCategories(),
     ])
-      .then(([txRows, openingBalances, categories]) => {
+      .then(([txResult, openingBalances, categories]) => {
+        const txRows = txResult.data;
+        const txMeta = txResult.meta;
         // Create lookup maps for categories
         const categoryMap = new Map<string, any>();
         categories.forEach((cat: any) => {
@@ -64,6 +67,11 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
           amount: parseFloat(t.amount),
         }));
         setTransactions(normalizedTx);
+
+        // Warn if the response was truncated at the 500-row cap
+        if (txMeta && txMeta.total > normalizedTx.length) {
+          setIsTruncated(true);
+        }
 
         // 2. Compute Sidebar Data
         // Opening balance
@@ -140,6 +148,12 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
         </h2>
         <p className="text-slate-400 text-sm">Szczegóły przepływów dla wybranego miesiąca</p>
       </div>
+
+      {isTruncated && (
+        <div className="p-4 bg-yellow-950/50 border border-yellow-800 rounded-lg text-yellow-300 text-sm">
+          Warning: This month has more than 500 transactions. Only the first 500 are shown.
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Main transaction list */}
