@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getMonthlySummary } from '../api';
-import { linearRegression, predictPoints } from '../lib/linearRegression';
+import { linearRegression } from '../lib/linearRegression';
 import { NormalizedSummaryRow } from '../components/ZbiorczyTable';
 import BalanceChart from '../charts/BalanceChart';
 import ComboChart from '../charts/ComboChart';
