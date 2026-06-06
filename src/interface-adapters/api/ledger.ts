@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { CreateTransactionSchema, ListTransactionsQuerySchema, AssignCategorySchema } from '../../application/schemas/ledger';
-import { createTransaction, listTransactions, getMonthlySummary } from '../../core/ledger/use-cases';
+import { CreateTransactionSchema, ListTransactionsQuerySchema, AssignCategorySchema, UpdateTransactionSchema } from '../../application/schemas/ledger';
+import { createTransaction, listTransactions, getMonthlySummary, getTransaction, updateTransaction, deleteTransaction } from '../../core/ledger/use-cases';
 import { requireAuth } from './auth';
 import sql from '../../infrastructure/db/client';
 
@@ -79,6 +79,84 @@ ledgerRoutes.get('/summary', requireAuth, async (c) => {
     return c.json({ data: null, error: { message }, meta: null }, 500);
   }
 });
+
+// GET /transactions/:id — single transaction (for edit form prefill)
+ledgerRoutes.get(
+  '/:id',
+  requireAuth,
+  async (c) => {
+    try {
+      const rawId = c.req.param('id');
+      const parseResult = uuidSchema.safeParse(rawId);
+      if (!parseResult.success) {
+        return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
+      }
+      const id = parseResult.data;
+      const tx = await getTransaction(id);
+      if (!tx) {
+        return c.json({ data: null, error: { message: 'Transaction not found' }, meta: null }, 404);
+      }
+      return c.json({ data: tx, error: null, meta: null }, 200);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Internal server error';
+      return c.json({ data: null, error: { message }, meta: null }, 500);
+    }
+  }
+);
+
+// PUT /transactions/:id — update all fields (no re-analysis enqueue per D-04)
+ledgerRoutes.put(
+  '/:id',
+  requireAuth,
+  zValidator('json', UpdateTransactionSchema, (result, c) => {
+    if (!result.success) {
+      return c.json(
+        { data: null, error: { message: 'Validation failed', details: result.error.flatten() }, meta: null },
+        400
+      );
+    }
+  }),
+  async (c) => {
+    try {
+      const rawId = c.req.param('id');
+      const parseResult = uuidSchema.safeParse(rawId);
+      if (!parseResult.success) {
+        return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
+      }
+      const id = parseResult.data;
+      const input = c.req.valid('json');
+      const tx = await updateTransaction(id, input);
+      return c.json({ data: tx, error: null, meta: null }, 200);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Internal server error';
+      if (message.includes('not found')) {
+        return c.json({ data: null, error: { message }, meta: null }, 404);
+      }
+      return c.json({ data: null, error: { message }, meta: null }, 500);
+    }
+  }
+);
+
+// DELETE /transactions/:id — atomic hard delete with hash clearing + insight cleanup
+ledgerRoutes.delete(
+  '/:id',
+  requireAuth,
+  async (c) => {
+    try {
+      const rawId = c.req.param('id');
+      const parseResult = uuidSchema.safeParse(rawId);
+      if (!parseResult.success) {
+        return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
+      }
+      const id = parseResult.data;
+      await deleteTransaction(id);
+      return c.json({ data: { success: true }, error: null, meta: null }, 200);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Internal server error';
+      return c.json({ data: null, error: { message }, meta: null }, 500);
+    }
+  }
+);
 
 // PATCH /transactions/:id/category
 ledgerRoutes.patch(

@@ -4,6 +4,7 @@ import type {
   CreateTransactionInput,
   CreateOpeningBalanceInput,
   UpdateOpeningBalanceInput,
+  UpdateTransactionInput,
 } from '../../application/schemas/ledger';
 
 // createTransaction: atomic insert + PGMQ enqueue
@@ -138,6 +139,47 @@ export async function updateOpeningBalance(
     RETURNING *
   `;
   return row as MonthlyOpeningBalance | undefined;
+}
+
+// getTransaction: fetch single transaction by ID (for edit form prefill)
+export async function getTransaction(id: string): Promise<Transaction | undefined> {
+  const [row] = await sql`SELECT * FROM transactions WHERE id = ${id}`;
+  return row as Transaction | undefined;
+}
+
+// updateTransaction: update all fields, no PGMQ enqueue (D-04)
+export async function updateTransaction(id: string, input: UpdateTransactionInput): Promise<Transaction> {
+  const [tx] = await sql`
+    UPDATE transactions SET
+      account_id = ${input.account_id},
+      category_id = ${input.category_id ?? null},
+      type = ${input.type},
+      amount = ${input.amount},
+      description = ${input.description ?? null},
+      date = ${input.date},
+      transfer_to_account_id = ${input.transfer_to_account_id ?? null}
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  if (!tx) throw new Error('Transaction not found');
+  return tx as Transaction;
+  // NOTE: No PGMQ enqueue per D-04 (explicitly no re-analysis on edit)
+}
+
+// deleteTransaction: atomic multi-step — clear hash, clean insights, hard delete
+export async function deleteTransaction(id: string): Promise<void> {
+  await sql.begin(async (sql) => {
+    // Step 1 (D-05): Clear import_hash so same CSV row can be re-imported
+    await sql`UPDATE transactions SET import_hash = NULL WHERE id = ${id}`;
+    // Step 2 (D-06): Remove ID from insight linked_transaction_ids
+    await sql`
+      UPDATE insights
+      SET linked_transaction_ids = array_remove(linked_transaction_ids, ${id})
+      WHERE ${id} = ANY(linked_transaction_ids)
+    `;
+    // Step 3 (D-07): Hard delete
+    await sql`DELETE FROM transactions WHERE id = ${id}`;
+  });
 }
 
 // listOpeningBalances: fetch all opening balances with year/month filters
