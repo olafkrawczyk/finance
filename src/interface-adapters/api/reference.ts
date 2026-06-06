@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import sql from '../../infrastructure/db/client';
+import { requireAuth } from './auth';
 
 export const referenceRoutes = new Hono();
 
-referenceRoutes.get('/accounts', async (c) => {
+referenceRoutes.get('/accounts', requireAuth, async (c) => {
   try {
     const rows = await sql`SELECT * FROM accounts ORDER BY name`;
     return c.json(
@@ -16,7 +17,7 @@ referenceRoutes.get('/accounts', async (c) => {
   }
 });
 
-referenceRoutes.get('/categories', async (c) => {
+referenceRoutes.get('/categories', requireAuth, async (c) => {
   try {
     const rows = await sql`SELECT * FROM categories ORDER BY name`;
     return c.json(

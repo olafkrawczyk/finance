@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { app } from '../index';
+import { auth } from '../src/auth';
 import sql from '../src/infrastructure/db/client';
 
 let accountId: string;
 let categoryId: string;
 let transactionId: string;
 let openingBalanceId: string;
+let sessionCookie: string;
 
 beforeAll(async () => {
   await sql`TRUNCATE transactions CASCADE`;
   await sql`DELETE FROM monthly_opening_balances`;
   await sql`DELETE FROM pgmq.q_analysis_queue`;
+  await sql`TRUNCATE "session", "account", "user", "verification" CASCADE`;
 
   const accounts = await sql`SELECT id FROM accounts LIMIT 1`;
   if (accounts.length === 0) {
@@ -23,6 +26,21 @@ beforeAll(async () => {
     throw new Error('No seeded categories found');
   }
   categoryId = categories[0].id;
+
+  // Set up session cookie for the integration tests
+  const res = await auth.api.signUpEmail({
+    body: {
+      email: 'api-test@example.com',
+      password: 'testpassword123',
+      name: 'API Test User',
+    },
+    asResponse: true,
+  });
+  const setCookie = res.headers.get('set-cookie');
+  if (!setCookie) {
+    throw new Error('Failed to get session cookie for integration tests');
+  }
+  sessionCookie = setCookie;
 });
 
 describe('HTTP API Endpoints Integration Tests', () => {
@@ -37,13 +55,15 @@ describe('HTTP API Endpoints Integration Tests', () => {
     const res = await app.request('/health/db');
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.data).toEqual({ db: true, pgmq: true });
+    expect(json.data).toEqual({ db: true, pgmq: true, import_queue: true });
     expect(json.error).toBeNull();
     expect(json.meta).toBeNull();
   });
 
   it('GET /accounts returns reference accounts', async () => {
-    const res = await app.request('/accounts');
+    const res = await app.request('/accounts', {
+      headers: { Cookie: sessionCookie },
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveLength(2);
@@ -51,7 +71,9 @@ describe('HTTP API Endpoints Integration Tests', () => {
   });
 
   it('GET /categories returns 25 reference categories', async () => {
-    const res = await app.request('/categories');
+    const res = await app.request('/categories', {
+      headers: { Cookie: sessionCookie },
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveLength(25);
@@ -61,7 +83,10 @@ describe('HTTP API Endpoints Integration Tests', () => {
   it('POST /transactions rejects invalid body', async () => {
     const res = await app.request('/transactions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+      },
       body: JSON.stringify({
         account_id: 'not-a-uuid',
         type: 'expense',
@@ -79,7 +104,10 @@ describe('HTTP API Endpoints Integration Tests', () => {
   it('POST /transactions creates a transaction and enqueues atomically', async () => {
     const res = await app.request('/transactions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+      },
       body: JSON.stringify({
         account_id: accountId,
         category_id: categoryId,
@@ -99,7 +127,9 @@ describe('HTTP API Endpoints Integration Tests', () => {
   });
 
   it('GET /transactions returns a paginated list', async () => {
-    const res = await app.request('/transactions?page=1&per_page=10');
+    const res = await app.request('/transactions?page=1&per_page=10', {
+      headers: { Cookie: sessionCookie },
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveLength(1);
@@ -110,7 +140,10 @@ describe('HTTP API Endpoints Integration Tests', () => {
   it('POST /opening-balance creates global monthly balance', async () => {
     const res = await app.request('/opening-balance', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+      },
       body: JSON.stringify({
         year: 2026,
         month: 6,
@@ -128,7 +161,10 @@ describe('HTTP API Endpoints Integration Tests', () => {
   it('POST /opening-balance rejects duplicates', async () => {
     const res = await app.request('/opening-balance', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+      },
       body: JSON.stringify({
         year: 2026,
         month: 6,
@@ -141,7 +177,10 @@ describe('HTTP API Endpoints Integration Tests', () => {
   it('PUT /opening-balance/:id updates the balance', async () => {
     const res = await app.request(`/opening-balance/${openingBalanceId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+      },
       body: JSON.stringify({
         opening_balance: '13500.0000',
         notes: 'Adjusted net worth',
@@ -154,7 +193,9 @@ describe('HTTP API Endpoints Integration Tests', () => {
   });
 
   it('GET /opening-balance returns matching entries', async () => {
-    const res = await app.request('/opening-balance?year=2026&month=6');
+    const res = await app.request('/opening-balance?year=2026&month=6', {
+      headers: { Cookie: sessionCookie },
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveLength(1);
@@ -162,7 +203,9 @@ describe('HTTP API Endpoints Integration Tests', () => {
   });
 
   it('GET /summary returns monthly aggregates', async () => {
-    const res = await app.request('/transactions/summary');
+    const res = await app.request('/transactions/summary', {
+      headers: { Cookie: sessionCookie },
+    });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data).toHaveLength(1);

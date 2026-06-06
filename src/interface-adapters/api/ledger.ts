@@ -2,12 +2,14 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { CreateTransactionSchema, ListTransactionsQuerySchema } from '../../application/schemas/ledger';
 import { createTransaction, listTransactions, getMonthlySummary } from '../../core/ledger/use-cases';
+import { requireAuth } from './auth';
 
 export const ledgerRoutes = new Hono();
 
 // POST /transactions
 ledgerRoutes.post(
   '/',
+  requireAuth,
   zValidator('json', CreateTransactionSchema, (result, c) => {
     if (!result.success) {
       return c.json(
@@ -32,6 +34,7 @@ ledgerRoutes.post(
 // GET /transactions
 ledgerRoutes.get(
   '/',
+  requireAuth,
   zValidator('query', ListTransactionsQuerySchema, (result, c) => {
     if (!result.success) {
       return c.json(
@@ -60,7 +63,7 @@ ledgerRoutes.get(
 );
 
 // GET /summary
-ledgerRoutes.get('/summary', async (c) => {
+ledgerRoutes.get('/summary', requireAuth, async (c) => {
   try {
     const rows = await getMonthlySummary();
     return c.json(

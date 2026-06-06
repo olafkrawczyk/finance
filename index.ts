@@ -4,7 +4,37 @@ import { openingBalanceRoutes } from './src/interface-adapters/api/opening-balan
 import { referenceRoutes } from './src/interface-adapters/api/reference';
 import { healthDb } from './src/infrastructure/db/health';
 
-const app = new Hono();
+import { cors } from 'hono/cors';
+import { auth } from './src/auth';
+
+const app = new Hono<{
+  Variables: {
+    user: typeof auth.$Infer.Session.user | null;
+    session: typeof auth.$Infer.Session.session | null;
+  };
+}>();
+
+// CORS for auth routes
+app.use(
+  '/api/auth/*',
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['POST', 'GET', 'OPTIONS'],
+    credentials: true,
+  })
+);
+
+// Mount Better Auth handler
+app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+
+// Session middleware for all routes
+app.use('*', async (c, next) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  c.set('user', session?.user ?? null);
+  c.set('session', session?.session ?? null);
+  await next();
+});
 
 // Health
 app.get('/health', (c) => c.json({ data: { ok: true }, error: null, meta: null }));

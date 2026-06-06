@@ -2,11 +2,12 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { CreateOpeningBalanceSchema, UpdateOpeningBalanceSchema } from '../../application/schemas/ledger';
 import { createOpeningBalance, updateOpeningBalance, listOpeningBalances } from '../../core/ledger/use-cases';
+import { requireAuth } from './auth';
 
 export const openingBalanceRoutes = new Hono();
 
 // GET /opening-balance
-openingBalanceRoutes.get('/', async (c) => {
+openingBalanceRoutes.get('/', requireAuth, async (c) => {
   try {
     const year = c.req.query('year');
     const month = c.req.query('month');
@@ -27,6 +28,7 @@ openingBalanceRoutes.get('/', async (c) => {
 // POST /opening-balance
 openingBalanceRoutes.post(
   '/',
+  requireAuth,
   zValidator('json', CreateOpeningBalanceSchema, (result, c) => {
     if (!result.success) {
       return c.json({ data: null, error: { message: 'Validation failed' }, meta: null }, 400);
@@ -48,6 +50,7 @@ openingBalanceRoutes.post(
 // PUT /opening-balance/:id
 openingBalanceRoutes.put(
   '/:id',
+  requireAuth,
   zValidator('json', UpdateOpeningBalanceSchema, (result, c) => {
     if (!result.success) {
       return c.json({ data: null, error: { message: 'Validation failed' }, meta: null }, 400);
