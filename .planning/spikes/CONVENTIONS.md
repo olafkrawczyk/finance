@@ -21,6 +21,9 @@ Patterns and stack choices established across spike sessions. New spikes follow 
 - **UI prototypes:** Build with TailwindCDN standalone HTML for quick iteration
 - **DB changes:** Full SQL migration scripts in the spike artifact
 - **Approach documents:** Use `approach.md` for tradeoff analysis
+- **Hover-reveal actions:** Table row actions (edit, delete) revealed on hover for clean default state
+- **Edit/delete modals:** Use modal overlay for editing all fields, confirmation dialog for deletion
+- **Trigger modifications:** DB trigger changes documented with CREATE OR REPLACE + migration notes
 
 ## Tools & Libraries
 
