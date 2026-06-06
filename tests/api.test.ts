@@ -216,4 +216,100 @@ describe('HTTP API Endpoints Integration Tests', () => {
     // stan_konta = opening_balance (13500) + net (0 - 150) = 13350
     expect(summary.stan_konta).toBe('13350.0000');
   });
+
+  describe('PATCH /transactions/:id/category', () => {
+    let uncategorizedTxId: string;
+
+    it('creates an uncategorized transaction (category_id = null)', async () => {
+      const res = await app.request('/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie,
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          category_id: null,
+          type: 'expense',
+          amount: '80.0000',
+          date: '2026-06-06',
+          description: 'Uncategorized shopping',
+        }),
+      });
+      expect(res.status).toBe(201);
+      const json = await res.json();
+      expect(json.data.id).toBeDefined();
+      expect(json.data.category_id).toBeNull();
+      uncategorizedTxId = json.data.id;
+    });
+
+    it('rejects PATCH request without auth', async () => {
+      const res = await app.request(`/transactions/${uncategorizedTxId}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category_id: categoryId }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects PATCH request with invalid UUID format', async () => {
+      const res = await app.request(`/transactions/${uncategorizedTxId}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie,
+        },
+        body: JSON.stringify({ category_id: 'not-a-uuid' }),
+      });
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.message).toBe('Validation failed');
+    });
+
+    it('successfully updates category_id on uncategorized transaction', async () => {
+      const res = await app.request(`/transactions/${uncategorizedTxId}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie,
+        },
+        body: JSON.stringify({ category_id: categoryId }),
+      });
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.data.category_id).toBe(categoryId);
+
+      // Verify DB reflects it
+      const [dbRow] = await sql`SELECT category_id FROM transactions WHERE id = ${uncategorizedTxId}`;
+      expect(dbRow.category_id).toBe(categoryId);
+    });
+
+    it('returns 404 when patching an already categorized transaction', async () => {
+      const res = await app.request(`/transactions/${uncategorizedTxId}/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie,
+        },
+        body: JSON.stringify({ category_id: categoryId }),
+      });
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error.message).toBe('Transaction not found or already categorized');
+    });
+
+    it('blocks general updates that modify other fields (db trigger check)', async () => {
+      // Trying to update the amount via sql UPDATE directly should fail due to trigger
+      let threw = false;
+      try {
+        await sql`UPDATE transactions SET amount = '90.0000' WHERE id = ${uncategorizedTxId}`;
+      } catch (err: any) {
+        threw = true;
+        expect(err.message).toContain('immutable');
+      }
+      expect(threw).toBe(true);
+    });
+  });
 });
