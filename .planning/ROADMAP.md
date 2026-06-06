@@ -67,25 +67,24 @@ Plans:
 ## Phase 4: AI Insights & Forecasting
 
 **Goal:** Integrate OpenRouter for advanced financial analysis.
-
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — DB migration, entities, Zod schemas, schema tests (backbone foundation)
+- [x] 04-01-PLAN.md — DB migration, entities, Zod schemas, schema tests (backbone foundation)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 04-02-PLAN.md — PGMQ insights worker + use-cases (dual-model OpenRouter calls, dedup logic)
-- [ ] 04-03-PLAN.md — API routes + server wiring (Hono /insights endpoints, integration tests)
+- [x] 04-02-PLAN.md — PGMQ insights worker + use-cases (dual-model OpenRouter calls, dedup logic)
+- [x] 04-03-PLAN.md — API routes + server wiring (Hono /insights endpoints, integration tests)
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 04-04-PLAN.md — Frontend dashboard widget + API client + ComboChart dual prediction lines
+- [x] 04-04-PLAN.md — Frontend dashboard widget + API client + ComboChart dual prediction lines
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 04-05-PLAN.md — InsightsPage + InsightCard + nav integration + Vite proxy
+- [x] 04-05-PLAN.md — InsightsPage + InsightCard + nav integration + Vite proxy
 
 **Verification:** Generate insights for a sample dataset and verify JSON parsing.
 
