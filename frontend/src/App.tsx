@@ -7,6 +7,7 @@ import MonthlyPage from './pages/MonthlyPage';
 import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
 import InsightsPage from './pages/InsightsPage';
+import AssetsPage from './pages/AssetsPage';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -30,7 +31,11 @@ export default function App() {
   // Minimal Router
   const renderContent = () => {
     if (currentPath === '/dashboard' || currentPath === '/') {
-      return <DashboardPage onMonthClick={(month: string) => navigateTo(`/month/${month}`)} />;
+      return <DashboardPage onMonthClick={(month: string) => navigateTo(`/month/${month}`)} onAssetsClick={() => navigateTo('/assets')} />;
+    }
+
+    if (currentPath === '/assets') {
+      return <AssetsPage />;
     }
 
     if (currentPath === '/zbiorczy') {
@@ -117,6 +122,16 @@ export default function App() {
               }`}
             >
               Dashboard
+            </button>
+            <button
+              onClick={() => navigateTo('/assets')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath === '/assets'
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Aktywa
             </button>
             <button
               onClick={() => navigateTo('/zbiorczy')}

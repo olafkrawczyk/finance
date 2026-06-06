@@ -240,3 +240,56 @@ export async function getInsightsForecast() {
   return json.data;
 }
 
+export async function getAssets() {
+  const res = await fetch('/assets', { credentials: 'include' });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch assets: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function createAsset(data: { name: string; value: number }) {
+  const res = await fetch('/assets', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to create asset: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateAsset(id: string, data: { name: string; value: number }) {
+  const res = await fetch(`/assets/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to update asset: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function deleteAsset(id: string) {
+  const res = await fetch(`/assets/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to delete asset: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+

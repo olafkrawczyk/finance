@@ -31,6 +31,17 @@ interface ComboChartProps {
 }
 
 export default function ComboChart({ data, prediction, aiForecast, onMonthClick }: ComboChartProps) {
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('pl-PL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(val);
+
+  const formatYAxis = (val: number) =>
+    new Intl.NumberFormat('pl-PL', {
+      maximumFractionDigits: 0,
+    }).format(val);
+
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[350px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
@@ -43,8 +54,25 @@ export default function ComboChart({ data, prediction, aiForecast, onMonthClick 
   const mergedData = data.map((d, index) => ({
     ...d,
     prediction: prediction[index]?.value ?? null,
-    aiForecast: aiForecast?.[index]?.value ?? null,
+    aiForecast: aiForecast?.find(p => p.monthIndex === index)?.value ?? null,
   }));
+
+  // Add phantom next-month entry if AI forecast extends beyond data
+  const nextMonthForecast = aiForecast?.find(p => p.monthIndex === data.length);
+  if (nextMonthForecast) {
+    const lastMonth = data[data.length - 1].month;
+    const [y, m] = lastMonth.split('-').map(Number);
+    const nextDate = new Date(y, m, 1);
+    const nextLabel = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+    mergedData.push({
+      month: nextLabel,
+      wydatki: 0,
+      przychody: 0,
+      stan_konta: null,
+      prediction: null,
+      aiForecast: nextMonthForecast.value,
+    } as any);
+  }
 
   return (
     <ResponsiveContainer width="100%" height={350}>
@@ -59,13 +87,14 @@ export default function ComboChart({ data, prediction, aiForecast, onMonthClick 
       >
         <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
         <XAxis dataKey="month" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <YAxis stroke="#94a3b8" tickFormatter={formatYAxis} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#0f172a',
             borderColor: '#334155',
             color: '#f8fafc',
           }}
+          formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
         />
         <Legend
           wrapperStyle={{

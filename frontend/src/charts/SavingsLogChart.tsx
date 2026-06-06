@@ -20,6 +20,8 @@ interface SavingsLogChartProps {
 }
 
 export default function SavingsLogChart({ data, onMonthClick }: SavingsLogChartProps) {
+  const formatLog = (val: number) => val.toFixed(2);
+
   if (!data || data.length < 2) {
     return (
       <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
@@ -41,13 +43,14 @@ export default function SavingsLogChart({ data, onMonthClick }: SavingsLogChartP
       >
         <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
         <XAxis dataKey="month" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <YAxis stroke="#94a3b8" tickFormatter={formatLog} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#0f172a',
             borderColor: '#334155',
             color: '#f8fafc',
           }}
+          formatter={(value: any, name: any) => [formatLog(Number(value)), name]}
         />
         <Line
           type="monotone"
