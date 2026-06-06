@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ImportUpload from './components/ImportUpload';
 import ImportStatus from './components/ImportStatus';
+import DashboardPage from './pages/DashboardPage';
+import ZbiorczyPage from './pages/ZbiorczyPage';
+import MonthlyPage from './pages/MonthlyPage';
+import CategorizePage from './pages/CategorizePage';
+import AddTransactionPage from './pages/AddTransactionPage';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
@@ -23,7 +28,28 @@ export default function App() {
 
   // Minimal Router
   const renderContent = () => {
-    if (currentPath === '/import' || currentPath === '/') {
+    if (currentPath === '/dashboard' || currentPath === '/') {
+      return <DashboardPage onMonthClick={(month: string) => navigateTo(`/month/${month}`)} />;
+    }
+
+    if (currentPath === '/zbiorczy') {
+      return <ZbiorczyPage />;
+    }
+
+    if (currentPath.startsWith('/month/')) {
+      const yearMonth = currentPath.substring('/month/'.length);
+      return <MonthlyPage yearMonth={yearMonth} />;
+    }
+
+    if (currentPath === '/categorize') {
+      return <CategorizePage />;
+    }
+
+    if (currentPath === '/add') {
+      return <AddTransactionPage onSuccess={() => navigateTo('/dashboard')} />;
+    }
+
+    if (currentPath === '/import') {
       return (
         <ImportUpload
           onImportStarted={(jobId) => {
@@ -39,6 +65,7 @@ export default function App() {
         <ImportStatus
           jobId={jobId}
           onBack={() => navigateTo('/import')}
+          onCategorize={() => navigateTo('/categorize')}
         />
       );
     }
@@ -47,10 +74,10 @@ export default function App() {
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold text-red-500">404 - Page Not Found</h2>
         <button
-          onClick={() => navigateTo('/import')}
+          onClick={() => navigateTo('/dashboard')}
           className="mt-4 px-6 py-2 bg-blue-600 rounded-lg text-white font-medium"
         >
-          Go to Imports
+          Go to Dashboard
         </button>
       </div>
     );
@@ -65,27 +92,67 @@ export default function App() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
               F
             </div>
-            <span className="text-lg font-extrabold tracking-tight text-white">
+            <span className="text-lg font-semibold tracking-tight text-white">
               Finance<span className="text-blue-500">Flow</span>
             </span>
           </div>
-          <nav className="flex space-x-1">
+          <nav className="flex flex-wrap space-x-1">
             <button
-              onClick={() => navigateTo('/import')}
+              onClick={() => navigateTo('/dashboard')}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/import') || currentPath === '/'
+                currentPath === '/dashboard' || currentPath === '/'
                   ? 'bg-slate-900 text-blue-400'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              CSV Ingestion
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigateTo('/zbiorczy')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath.startsWith('/zbiorczy')
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Zbiorczy
+            </button>
+            <button
+              onClick={() => navigateTo('/categorize')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath.startsWith('/categorize')
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Kategoryzuj
+            </button>
+            <button
+              onClick={() => navigateTo('/add')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath.startsWith('/add')
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Dodaj
+            </button>
+            <button
+              onClick={() => navigateTo('/import')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                currentPath.startsWith('/import')
+                  ? 'bg-slate-900 text-blue-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Import CSV
             </button>
           </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow flex items-center justify-center px-6 py-12">
+      <main className="flex-grow px-6 py-12 max-w-6xl mx-auto w-full">
         {renderContent()}
       </main>
 
