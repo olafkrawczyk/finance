@@ -8,6 +8,7 @@ import * as z from 'zod';
 export const QUEUE_NAME = 'analysis_queue';
 export const VISIBILITY_TIMEOUT = 300; // 5 minutes
 export const POLL_INTERVAL_MS = 5000;
+export const RECOVERY_INTERVAL_MS = 5 * 60 * 1000; // run stuck-job recovery every 5 minutes
 export const MAX_RETRIES = 3;
 export const DEDUP_WINDOW_DAYS = 14;
 export const RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -23,37 +24,52 @@ export function sanitizePromptText(text: string): string {
 }
 
 export function buildInsightsSystemPrompt(): string {
-  return `Jesteś profesjonalnym polskim doradcą finansowym analizującym historię transakcji użytkownika.
-Twoim zadaniem jest wygenerowanie przydatnych, spersonalizowanych analiz w języku polskim w formacie JSON.
-Generuj wskazówki (tip), trendy (trend) oraz alerty (alert) dotyczące wydatków, budżetu i nawyków finansowych.
+  return `You are a personal finance advisor analyzing a user's bank transaction history.
+Your task is to generate useful, personalized financial insights as JSON.
+Generate alerts, trends, and tips about spending patterns, budget, and financial habits.
 
-Każda wskazówka musi zawierać:
-- type: Jeden z: 'alert' (np. nagły wzrost wydatków), 'tip' (np. porady oszczędnościowe), 'trend' (np. analiza wydatków w kategoriach)
-- priority: Jeden z: 'high', 'medium', 'low'
-- title: Zwięzły tytuł (maksymalnie 100 znaków)
-- content: Szczegółowa treść analizy (maksymalnie 1000 znaków)
+Output language: POLISH. All title and content fields must be written in Polish.
 
-Przykład wyjścia:
+Each insight must have:
+- type: one of 'alert' (sudden spending spike), 'tip' (saving advice), 'trend' (category spending pattern)
+- priority: one of 'high', 'medium', 'low'
+- title: concise Polish title (max 100 characters)
+- content: detailed Polish analysis (max 1000 characters)
+
+Priority rules:
+- high: actionable problem requiring immediate attention (e.g. >50% spending spike, recurring unexpected charge)
+- medium: notable pattern worth reviewing
+- low: general observation or minor tip
+
+Example output:
 {
   "insights": [
     {
       "type": "alert",
       "priority": "high",
-      "title": "Wzrost wydatków na artykuły spożywcze",
-      "content": "W tym miesiącu Twoje wydatki na artykuły spożywcze wzrosły o 45% w porównaniu do poprzedniego okresu. Rozważ ustalenie limitu budżetowego."
+      "title": "Wzrost wydatków na jedzenie na mieście",
+      "content": "W ostatnich 3 miesiącach wydałeś o 60% więcej na restauracje niż w tym samym okresie rok temu. Rozważ ustalenie miesięcznego limitu."
     },
     {
       "type": "tip",
       "priority": "medium",
-      "title": "Ograniczenie subskrypcji",
-      "content": "Zauważyliśmy powtarzające się małe opłaty za usługi streamingowe. Anulowanie jednej z nich pozwoli zaoszczędzić około 30 PLN miesięcznie."
+      "title": "Oszczędności na kawie",
+      "content": "Wydajesz średnio 280 PLN miesięcznie na kawę. Parzenie kawy w domu mogłoby zaoszczędzić ok. 150 PLN miesięcznie."
+    },
+    {
+      "type": "trend",
+      "priority": "low",
+      "title": "Stabilne wydatki na paliwo",
+      "content": "Twoje wydatki na paliwo są stabilne i wynoszą ok. 600 PLN miesięcznie. Trend rok do roku: bez zmian."
     }
   ]
 }
 
-Zasady:
-- Odpowiadaj wyłącznie poprawnym obiektem JSON. Nie dodawaj żadnych wyjaśnień poza kodem JSON.
-- Wygeneruj wszystkie wykryte analizy.
+Rules:
+- Respond ONLY with a valid JSON object. No markdown, no explanations outside JSON.
+- Generate all insights you detect — do not limit to a fixed number.
+- Be specific: use actual amounts and percentages from the data, not generic advice.
+- Skip categories with no spending data.
 `;
 }
 
@@ -61,11 +77,11 @@ export function buildInsightsPrompt(transactions: TransactionData[]): string {
   const txList = transactions.map(t =>
     `- Date: ${t.date}, Amount: ${t.amount} PLN, Category: ${t.category_name ?? 'Uncategorized'}, Type: ${t.type}, Description: ${t.description ?? ''}`
   ).join('\n');
-  return `Oto lista transakcji z ostatnich 3 miesięcy wraz z okresem porównawczym z zeszłego roku:
+  return `Here are the user's transactions from the last 3 months plus the same period from last year for comparison:
 
 ${txList}
 
-Przeanalizuj te dane i wygeneruj przydatne wskazówki finansowe, alerty oraz trendy w języku polskim.`;
+Analyze this data and generate financial insights, alerts, and trends. Write all insight text in Polish.`;
 }
 
 export function buildForecastSystemPrompt(): string {
@@ -111,7 +127,7 @@ export async function callClaudeForInsights(transactions: TransactionData[]): Pr
   }
 
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1';
-  const model = process.env.OPENROUTER_INSIGHTS_MODEL ?? 'anthropic/claude-3.5-sonnet';
+  const model = process.env.OPENROUTER_INSIGHTS_MODEL ?? 'anthropic/claude-sonnet-4.6';
 
   const sanitizedTx = transactions.map(t => ({
     ...t,
@@ -170,7 +186,7 @@ export async function callClaudeForInsights(transactions: TransactionData[]): Pr
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenRouter error: ${response.status}`);
+    throw new Error(`OpenRouter error: ${response.status} — ${errorText}`);
   }
 
   const data = await response.json();
@@ -205,7 +221,7 @@ export async function callDeepSeekForForecast(aggregates: CategoryAggregate[]): 
   }
 
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1';
-  const model = process.env.OPENROUTER_FORECAST_MODEL ?? 'deepseek/deepseek-r1:free';
+  const model = process.env.OPENROUTER_FORECAST_MODEL ?? 'deepseek/deepseek-r1-0528';
 
   const systemPrompt = buildForecastSystemPrompt();
   const userPrompt = buildForecastPrompt(aggregates);
@@ -225,53 +241,32 @@ export async function callDeepSeekForForecast(aggregates: CategoryAggregate[]): 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'forecast_response',
-            strict: true,
-            schema: {
-              type: 'object',
-              properties: {
-                forecasts: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      category_name: { type: 'string' },
-                      predicted_spending: { type: 'string' },
-                      confidence: { type: 'string' },
-                      trend: { type: 'string', enum: ['up', 'down', 'flat'] }
-                    },
-                    required: ['category_name', 'predicted_spending', 'confidence', 'trend'],
-                    additionalProperties: false
-                  }
-                }
-              },
-              required: ['forecasts'],
-              additionalProperties: false
-            }
-          }
-        },
         temperature: 0.1,
         max_tokens: 4096
       })
     });
 
     if (!response.ok) {
-      console.warn(`OpenRouter R1 API error: ${response.status}`);
+      const errorText = await response.text();
+      console.warn(`[worker] DeepSeek API error: ${response.status} — ${errorText}`);
       return [];
     }
 
     const data = await response.json();
+    // R1 puts the answer in content; reasoning goes to reasoning_content
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
+      console.warn('[worker] DeepSeek returned empty content. Full response:', JSON.stringify(data).slice(0, 500));
       return [];
     }
 
-    const parsedJson = JSON.parse(content);
+    // Extract JSON from response — R1 sometimes wraps in markdown fences
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/(\{[\s\S]*\})/);
+    const jsonStr = jsonMatch ? jsonMatch[1] : content;
+    const parsedJson = JSON.parse(jsonStr);
     const rawForecasts = parsedJson.forecasts;
     if (!Array.isArray(rawForecasts)) {
+      console.warn('[worker] DeepSeek response missing forecasts array. Parsed:', parsedJson);
       return [];
     }
 
@@ -334,6 +329,20 @@ export function findLinks(
 }
 
 export async function recoverStuckInsightJobs(): Promise<void> {
+  // Reset VT for messages stuck mid-flight so we don't wait out the full 5-minute VT
+  try {
+    const inFlight = await sql`
+      SELECT msg_id FROM pgmq.q_analysis_queue WHERE vt > now() AND read_ct > 0
+    `;
+    for (const row of inFlight) {
+      await sql`SELECT pgmq.set_vt('analysis_queue', ${row.msg_id}::bigint, 0)`;
+      console.log(`[stuck recovery] Reset VT for PGMQ msg_id=${row.msg_id}`);
+    }
+  } catch (err) {
+    console.error('[stuck recovery] Failed to reset PGMQ message VT:', err);
+  }
+
+  // Delete messages that have been retried too many times or are very old
   try {
     const stuck = await sql`
       SELECT msg_id FROM pgmq.q_analysis_queue
@@ -344,7 +353,7 @@ export async function recoverStuckInsightJobs(): Promise<void> {
       console.log(`[stuck recovery] Deleted stuck message ${row.msg_id} from analysis_queue`);
     }
   } catch (err) {
-    console.error('[stuck recovery] Failed to recover stuck insights jobs:', err);
+    console.error('[stuck recovery] Failed to clean up stuck insights jobs:', err);
   }
 }
 
@@ -368,7 +377,7 @@ export async function processAnalysisMessage(msg: { message: any }): Promise<voi
     if (lastInsight.length > 0) {
       const lastTime = new Date(lastInsight[0].created_at).getTime();
       if (Date.now() - lastTime < RATE_LIMIT_COOLDOWN_MS) {
-        console.log(`Skipping manual analysis for user ${userId} due to cooldown`);
+        console.log(`[insights] Rate limit: skipping manual analysis for user ${userId} (cooldown active)`);
         return;
       }
     }
@@ -377,18 +386,23 @@ export async function processAnalysisMessage(msg: { message: any }): Promise<voi
   // 1. Fetch transaction window
   const transactions = await getInsightDataWindow(userId);
   if (transactions.length === 0) {
-    console.log(`No transactions found for user ${userId}. Skipping insights generation.`);
+    console.log(`[insights] No transactions found for user ${userId} — skipping`);
     return;
   }
+  console.log(`[insights] Processing ${transactions.length} transactions for user ${userId}`);
 
   const txIds = transactions.map(t => t.id);
 
   // 2. Call Claude for narrative insights
+  console.log(`[worker] Calling Claude for narrative insights (${transactions.length} transactions)...`);
   const narrativeInsightsRaw = await callClaudeForInsights(transactions);
+  console.log(`[worker] Claude returned ${narrativeInsightsRaw.length} insights`);
 
   // 3. Call DeepSeek R1 for category forecasts
   const aggregates = await getCategoryAggregates(txIds);
+  console.log(`[worker] Calling DeepSeek R1 for forecasts (${aggregates.length} categories)...`);
   const forecasts = aggregates.length > 0 ? await callDeepSeekForForecast(aggregates) : [];
+  console.log(`[worker] DeepSeek returned ${forecasts.length} forecasts`);
 
   // 4. Map and link narrative insights
   const mappedInsights = narrativeInsightsRaw.map(ni => {
@@ -434,15 +448,23 @@ export async function processAnalysisMessage(msg: { message: any }): Promise<voi
   // 6. Insert batch
   const allInsights = [...mappedInsights, ...forecastInsights];
   const inserted = await insertInsightBatch(allInsights);
-  console.log(`Inserted ${inserted} new insights for user ${userId}.`);
+  console.log(`[insights] Done — inserted ${inserted} new insights for user ${userId} (${allInsights.length - inserted} duplicates skipped)`);
 }
 
 export async function insightsWorkerLoop(): Promise<void> {
   console.log('Insights worker starting. Recovering stuck jobs...');
   await recoverStuckInsightJobs();
 
+  let lastRecoveryAt = Date.now();
+
   while (true) {
     try {
+      // Periodic stuck-job recovery (not just on startup)
+      if (Date.now() - lastRecoveryAt > RECOVERY_INTERVAL_MS) {
+        await recoverStuckInsightJobs();
+        lastRecoveryAt = Date.now();
+      }
+
       const messages = await sql`
         SELECT * FROM pgmq.read(${QUEUE_NAME}, ${VISIBILITY_TIMEOUT}, 1)
       `;
@@ -455,18 +477,23 @@ export async function insightsWorkerLoop(): Promise<void> {
       const msg = messages[0];
       const readCount = Number(msg.read_ct);
 
+      console.log(`[worker] Picked up message ${msg.msg_id} (attempt ${readCount + 1}/${MAX_RETRIES})`);
+
       try {
         await processAnalysisMessage(msg);
         await sql`SELECT pgmq.archive(${QUEUE_NAME}, ${msg.msg_id}::bigint)`;
+        console.log(`[worker] Message ${msg.msg_id} processed and archived`);
       } catch (err) {
-        console.error(`Message ${msg.msg_id} failed (attempt ${readCount}):`, err);
-        if (readCount >= MAX_RETRIES) {
-          console.error(`Max retries reached for message ${msg.msg_id}. Deleting.`);
+        console.error(`[worker] Message ${msg.msg_id} failed (attempt ${readCount + 1}):`, err);
+        if (readCount + 1 >= MAX_RETRIES) {
+          console.error(`[worker] Max retries reached for message ${msg.msg_id}. Deleting.`);
           await sql`SELECT pgmq.delete(${QUEUE_NAME}, ${msg.msg_id}::bigint)`;
+        } else {
+          console.log(`[worker] Message ${msg.msg_id} will retry after ${VISIBILITY_TIMEOUT}s`);
         }
       }
     } catch (err) {
-      console.error('Insights worker loop error:', err);
+      console.error('[worker] Loop error:', err);
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
     }
   }

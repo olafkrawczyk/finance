@@ -1,6 +1,9 @@
 {
   "scripts": {
     "dev:web": "vite",
+    "dev:api": "bun index.ts",
+    "dev:worker": "bun src/workers/insights-worker.ts",
+    "dev": "concurrently -n api,worker -c cyan,magenta \"bun index.ts\" \"bun src/workers/insights-worker.ts\"",
     "build:web": "vite build"
   },
   "dependencies": {
@@ -21,6 +24,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.5.0",
+    "concurrently": "^10.0.3",
     "postcss": "^8.5.15",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

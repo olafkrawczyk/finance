@@ -83,6 +83,7 @@ export async function getMonthlySummary(): Promise<MonthlySummaryRow[]> {
     ])
   );
 
+  let currentRunningBalance = 0;
   return agg.map((row: { month: string; wydatki: string; przychody: string; fixed_cost_total: string }) => {
     const wydatki = parseFloat(row.wydatki);
     const przychody = parseFloat(row.przychody);
@@ -90,9 +91,13 @@ export async function getMonthlySummary(): Promise<MonthlySummaryRow[]> {
     const wydatkiBezStalych = wydatki - fixedCost;
     const zaoszczedzone = przychody - wydatki;
     const zaoszczedzone_log = zaoszczedzone > 0 ? Math.log10(zaoszczedzone) : 0;
+    
     const openingBalance = balanceMap.get(row.month);
-    const stan_konta =
-      openingBalance != null ? String(parseFloat(openingBalance) + zaoszczedzone) : null;
+    if (openingBalance != null) {
+      currentRunningBalance = parseFloat(openingBalance) + zaoszczedzone;
+    } else {
+      currentRunningBalance += zaoszczedzone;
+    }
 
     return {
       month: row.month,
@@ -102,7 +107,7 @@ export async function getMonthlySummary(): Promise<MonthlySummaryRow[]> {
       wydatki_bez_stalych: wydatkiBezStalych.toFixed(4),
       zaoszczedzone: zaoszczedzone.toFixed(4),
       zaoszczedzone_log: zaoszczedzone_log.toFixed(6),
-      stan_konta: stan_konta != null ? parseFloat(stan_konta).toFixed(4) : null,
+      stan_konta: currentRunningBalance.toFixed(4),
     };
   });
 }

@@ -51,7 +51,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         setCategoryId(tx.category_id || '');
         setAmount(tx.amount);
         setDescription(tx.description || '');
-        setDate(tx.date);
+        setDate(tx.date.split('T')[0]);
         setCategories(catRows);
         setAccounts(accRows);
         setLoading(false);

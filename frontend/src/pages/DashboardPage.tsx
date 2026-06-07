@@ -73,6 +73,13 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
 
   const totalNetValue = assets.reduce((sum, a) => sum + a.value, 0);
 
+  const totalBankBalance = useMemo(() => {
+    if (!data) return 0;
+    return data.reduce((sum, r) => sum + r.zaoszczedzone, 0);
+  }, [data]);
+
+  const totalNetWorth = totalBankBalance + totalNetValue;
+
   const currentMonthStr = new Date().toISOString().substring(0, 7);
 
   // Find current month or fallback to last element of data
@@ -194,11 +201,25 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
               Całkowita wartość netto
             </h3>
             <p className="text-3xl font-bold text-slate-100 mt-2">
-              {formatPln(totalNetValue)} PLN
+              {formatPln(totalNetWorth)} PLN
             </p>
-            <p className="text-slate-500 text-xs mt-2">
-              Suma wszystkich ręcznie śledzonych aktywów
-            </p>
+            
+            <div className="mt-4 space-y-2 border-t border-slate-800/60 pt-4 text-xs">
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                  Konta bankowe (Saldo)
+                </span>
+                <span className="font-semibold text-slate-200">{formatPln(totalBankBalance)} PLN</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-300">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span>
+                  Pozostałe aktywa (Ręczne)
+                </span>
+                <span className="font-semibold text-slate-200">{formatPln(totalNetValue)} PLN</span>
+              </div>
+            </div>
           </div>
           <div className="mt-4 pt-4 border-t border-slate-800/60">
             <button

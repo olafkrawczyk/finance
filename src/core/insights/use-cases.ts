@@ -2,17 +2,23 @@ import sql from '../../infrastructure/db/client';
 import type { Insight, CategoryAggregate, TransactionData } from './entities';
 import type { InsightType } from './entities';
 
-// 1. getInsightDataWindow: Fetch transactions from the last 3 months + same months from previous year
+async function getLatestTransactionDate(): Promise<string> {
+  const [row] = await sql`SELECT MAX(date)::text AS latest FROM transactions`;
+  return row?.latest ?? new Date().toISOString().slice(0, 10);
+}
+
+// 1. getInsightDataWindow: Fetch transactions from the last 3 months + same months from previous year,
+// anchored to the latest transaction date so historical seed data is always usable.
 export async function getInsightDataWindow(userId: string): Promise<TransactionData[]> {
-  // transactions don't have user_id, so we return all transactions in the date range
+  const anchor = await getLatestTransactionDate();
   const rows = await sql`
     SELECT t.*, c.name as category_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id
-    WHERE t.date >= (current_date - interval '3 months')
-       OR (EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM current_date - interval '12 months')
-           AND t.date >= current_date - interval '15 months'
-           AND t.date < current_date - interval '11 months')
+    WHERE t.date >= (${anchor}::date - interval '3 months')
+       OR (EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM ${anchor}::date - interval '12 months')
+           AND t.date >= ${anchor}::date - interval '15 months'
+           AND t.date < ${anchor}::date - interval '11 months')
     ORDER BY t.date DESC
   `;
   return rows as TransactionData[];
@@ -22,6 +28,7 @@ export async function getInsightDataWindow(userId: string): Promise<TransactionD
 export async function getCategoryAggregates(transactionIds: string[]): Promise<CategoryAggregate[]> {
   if (transactionIds.length === 0) return [];
 
+  const anchor = await getLatestTransactionDate();
   const rows = await sql`
     WITH txs AS (
       SELECT
@@ -29,7 +36,7 @@ export async function getCategoryAggregates(transactionIds: string[]): Promise<C
         t.amount,
         t.date,
         c.name as category_name,
-        CASE WHEN t.date >= (current_date - interval '3 months') THEN 'recent' ELSE 'yoy' END as period
+        CASE WHEN t.date >= (${anchor}::date - interval '3 months') THEN 'recent' ELSE 'yoy' END as period
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.id = ANY(${transactionIds}) AND t.type = 'expense'

@@ -8,7 +8,7 @@ INSERT INTO categories (name, is_fixed_cost) VALUES
   ('VAT',         true),
   ('PIT36',       true),
   ('ZUS',         true),
-  ('arval',       true),
+  ('auto',        true),
   ('biuro',       false),
   ('mieszkanie',  true),
   ('przejazdy',   false),
