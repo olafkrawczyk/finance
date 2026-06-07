@@ -113,13 +113,14 @@ Plans:
 ## Phase 4.7: Auth UI (Login/Logout/Guard)
 
 **Goal:** Build frontend authentication UI — login/signup page, session-based route guarding, and logout.
+**Plans:** 2/2 plans complete
 
 **Wave 1** *(parallel — frontend plans)*
 
-- [ ] 04.7-01-PLAN.md — Auth Pages: Tabbed login/signup page with email/password + Google OAuth, redirect to /dashboard on success
-- [ ] 04.7-02-PLAN.md — Auth Guard & Logout: Session check in App.tsx, redirect to /login if unauthenticated, loading spinner, logout button in header
+- [x] 04.7-01-PLAN.md — Auth Pages: Tabbed login/signup page with email/password + Google OAuth, redirect to /dashboard on success
+- [x] 04.7-02-PLAN.md — Auth Guard & Logout + 401 Handler: Session check in App.tsx, redirect to /login if unauthenticated, loading spinner, logout button in header, global 401 redirect
 
-**Verification:** Visit app without session → redirect to /login. Sign up with email → redirect to /dashboard. Logout → redirect to /login. Sign in with Google → redirect to /dashboard.
+**Verification:** Visit app without session → redirect to /login. Sign up with email → redirect to /dashboard. Logout → redirect to /login. Sign in with Google → redirect to /dashboard. Restart server mid-session → next API call redirects to /login.
 
 ## Phase 4.8: Excel Data Migration
 
@@ -127,7 +128,7 @@ Plans:
 
 **Wave 1** *(parallel — backend + frontend)*
 
-- [ ] 04.8-01-PLAN.md — Backend Excel Ingestion: API route `/api/migration/excel` (multipart upload), dependency on XLSX parser, PGMQ ingestion task, account routing, category mapping, destructive truncate
+- [x] 04.8-01-PLAN.md — Backend Excel Ingestion: API route `/api/migration/excel` (multipart upload), dependency on XLSX parser, PGMQ ingestion task, account routing, category mapping, destructive truncate
 - [ ] 04.8-02-PLAN.md — Frontend Migration Page: `/migration` route, prominent destructive warning modal, upload status polling, error and success indicators
 
 **Verification:** Upload `budget.xlsx` via `/migration` route after confirming warning. Verify transactions are imported correctly (ING vs. PKO routing), opening balances match, and existing data was cleared.
@@ -140,4 +141,3 @@ Plans:
 - [ ] Performance tuning for Postgres queries.
 - [ ] Security audit and hardening.
 - [ ] Final UI/UX polish.
-
