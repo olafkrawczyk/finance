@@ -490,3 +490,101 @@ describe('Group 6: Pagination and Offset — D-02', () => {
     await sql`DELETE FROM transactions WHERE description LIKE 'Page test A %'`;
   });
 });
+
+// ── Group 7: Filtered Query Isolation — D-03 ───────────────────────────────
+
+describe('Group 7: Filtered Query Isolation — D-03', () => {
+  beforeAll(async () => {
+    const userAId = (await sql`SELECT id FROM "user" WHERE email = ${USER_A_EMAIL}`)[0].id;
+    const userBId = (await sql`SELECT id FROM "user" WHERE email = ${USER_B_EMAIL}`)[0].id;
+
+    // Insert mixed transactions for User A
+    await sql`
+      INSERT INTO transactions (account_id, type, amount, description, date, user_id)
+      VALUES (${userAAccountId}, 'expense', '50.0000', 'Filtered test expense', '2026-06-15', ${userAId})
+    `;
+    await sql`
+      INSERT INTO transactions (account_id, type, amount, description, date, user_id)
+      VALUES (${userAAccountId}, 'income', '2000.0000', 'Filtered test income', '2026-06-20', ${userAId})
+    `;
+    await sql`
+      INSERT INTO transactions (account_id, type, amount, description, date, user_id, category_id)
+      VALUES (${userAAccountId}, 'expense', '30.0000', 'Filtered test uncategorized', '2026-06-10', ${userAId}, NULL)
+    `;
+    await sql`
+      INSERT INTO transactions (account_id, type, amount, description, date, user_id)
+      VALUES (${userAAccountId}, 'expense', '25.0000', 'Filtered test future', '2027-01-15', ${userAId})
+    `;
+
+    // Insert a User B transaction that should NOT appear in User A's filtered queries
+    await sql`
+      INSERT INTO transactions (account_id, type, amount, description, date, user_id)
+      VALUES (${userBAccountId}, 'income', '9999.0000', 'User B filtered data', '2026-06-15', ${userBId})
+    `;
+  });
+
+  it('?type=expense returns only User A expense transactions', async () => {
+    const res = await app.request('/transactions?type=expense&page=1&per_page=50', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBeGreaterThanOrEqual(1);
+    // All returned items are expenses
+    for (const item of json.data) {
+      expect(item.type).toBe('expense');
+    }
+    // User B's data should not appear
+    const hasUserBData = json.data.some((t: any) => t.description === 'User B filtered data');
+    expect(hasUserBData).toBe(false);
+  });
+
+  it('?date_from&date_to respects user boundary', async () => {
+    const res = await app.request('/transactions?date_from=2026-06-01&date_to=2026-12-31&page=1&per_page=50', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBeGreaterThanOrEqual(1);
+    // User B's data should not appear
+    const hasUserBData = json.data.some((t: any) => t.description === 'User B filtered data');
+    expect(hasUserBData).toBe(false);
+  });
+
+  it('?uncategorized=true returns only User A uncategorized transactions', async () => {
+    const res = await app.request('/transactions?uncategorized=true&page=1&per_page=50', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBeGreaterThanOrEqual(1);
+    // All returned items have null category_id
+    for (const item of json.data) {
+      expect(item.category_id).toBeNull();
+    }
+    // User B's data should not appear
+    const hasUserBData = json.data.some((t: any) => t.description === 'User B filtered data');
+    expect(hasUserBData).toBe(false);
+  });
+
+  it('?account_id returns only that account transactions', async () => {
+    const res = await app.request(`/transactions?account_id=${userAAccountId}&page=1&per_page=50`, {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBeGreaterThanOrEqual(1);
+    // All returned items belong to User A's account
+    for (const item of json.data) {
+      expect(item.account_id).toBe(userAAccountId);
+    }
+    // User B's data should not appear
+    const hasUserBData = json.data.some((t: any) => t.description === 'User B filtered data');
+    expect(hasUserBData).toBe(false);
+  });
+
+  afterAll(async () => {
+    await sql`DELETE FROM transactions WHERE description LIKE 'Filtered test %'`;
+    await sql`DELETE FROM transactions WHERE description = 'User B filtered data'`;
+  });
+});
