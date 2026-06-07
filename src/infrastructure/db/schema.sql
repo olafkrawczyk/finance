@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name          TEXT NOT NULL,
   user_id       TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   is_fixed_cost BOOLEAN NOT NULL DEFAULT false,
+  llm_description TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, name)
 );
