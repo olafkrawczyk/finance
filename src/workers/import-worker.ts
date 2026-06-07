@@ -267,9 +267,10 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', ca
 export async function insertBatch(
   accountId: string,
   transactions: ParsedTransaction[],
-  categoryMap: Map<string, string> = new Map()
+  categoryMap: Map<string, string> = new Map(),
+  userId: string
 ): Promise<void> {
-  const accounts = await sql`SELECT id FROM accounts`;
+  const accounts = await sql`SELECT id FROM accounts WHERE user_id = ${userId}`;
   const otherAccount = accounts.find((a) => a.id !== accountId);
   const otherAccountId = otherAccount?.id ?? null;
 
@@ -288,7 +289,8 @@ export async function insertBatch(
           description,
           date,
           transfer_to_account_id,
-          import_hash
+          import_hash,
+          user_id
         )
         VALUES (
           ${accountId},
@@ -298,9 +300,10 @@ export async function insertBatch(
           ${tx.description},
           ${tx.date},
           ${transferToAccountId},
-          ${hash}
+          ${hash},
+          ${userId}
         )
-        ON CONFLICT (import_hash) DO NOTHING
+        ON CONFLICT (user_id, import_hash) DO NOTHING
       `;
     }
   });
