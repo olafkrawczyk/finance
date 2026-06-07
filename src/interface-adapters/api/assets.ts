@@ -9,7 +9,8 @@ export const assetsRoutes = new Hono();
 // GET /assets
 assetsRoutes.get('/', requireAuth, async (c) => {
   try {
-    const rows = await listAssets();
+    const user = c.get('user');
+    const rows = await listAssets(user.id);
     return c.json({ data: rows, error: null, meta: null }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
@@ -28,8 +29,9 @@ assetsRoutes.post(
   }),
   async (c) => {
     try {
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const row = await createAsset(input.name, input.value);
+      const row = await createAsset(input.name, input.value, user.id);
       return c.json({ data: row, error: null, meta: null }, 201);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';
@@ -51,8 +53,9 @@ assetsRoutes.put(
   async (c) => {
     try {
       const id = c.req.param('id');
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const row = await updateAsset(id, input.name, input.value);
+      const row = await updateAsset(id, input.name, input.value, user.id);
       if (!row) {
         return c.json({ data: null, error: { message: 'Asset not found' }, meta: null }, 404);
       }
@@ -69,7 +72,8 @@ assetsRoutes.put(
 assetsRoutes.delete('/:id', requireAuth, async (c) => {
   try {
     const id = c.req.param('id');
-    await deleteAsset(id);
+    const user = c.get('user');
+    await deleteAsset(id, user.id);
     return c.json({ data: { success: true }, error: null, meta: null }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';

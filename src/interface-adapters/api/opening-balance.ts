@@ -9,9 +9,11 @@ export const openingBalanceRoutes = new Hono();
 // GET /opening-balance
 openingBalanceRoutes.get('/', requireAuth, async (c) => {
   try {
+    const user = c.get('user');
     const year = c.req.query('year');
     const month = c.req.query('month');
     const rows = await listOpeningBalances({
+      userId: user.id,
       year: year ? Number(year) : undefined,
       month: month ? Number(month) : undefined,
     });
@@ -36,8 +38,9 @@ openingBalanceRoutes.post(
   }),
   async (c) => {
     try {
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const row = await createOpeningBalance(input);
+      const row = await createOpeningBalance({ ...input, userId: user.id });
       return c.json({ data: row, error: null, meta: null }, 201);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';
@@ -59,8 +62,9 @@ openingBalanceRoutes.put(
   async (c) => {
     try {
       const id = c.req.param('id');
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const row = await updateOpeningBalance(id, input);
+      const row = await updateOpeningBalance(id, input, user.id);
       if (!row) {
         return c.json({ data: null, error: { message: 'Not found' }, meta: null }, 404);
       }
