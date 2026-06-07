@@ -24,6 +24,9 @@ migrationRoutes.post('/excel', requireAuth, async (c) => {
       return c.json({ data: null, error: { message: 'File exceeds the 20MB size limit' }, meta: null }, 413);
     }
 
+    // Extract userId from session — never trust client-provided ID (SCOPE-06)
+    const user = c.get('user');
+
     // Generate a server-side random UUID — never trust client-provided IDs (T-MIG-04)
     const jobId = crypto.randomUUID();
 
@@ -35,7 +38,9 @@ migrationRoutes.post('/excel', requireAuth, async (c) => {
     await Bun.write(filePath, arrayBuffer);
 
     const result = await sql.begin(async (sql) => {
-      // Destructive reset: wipe transactional ledger data before re-ingestion
+      // SECURITY: TRUNCATE is intentionally global — destroys ALL users' data.
+      // This is an admin-level migration reset. If per-user scoping is needed,
+      // replace with DELETE FROM ... WHERE user_id = ${userId}.
       await sql`TRUNCATE transactions, monthly_opening_balances, insights, import_jobs CASCADE`;
 
       // PKO Personal survives the cascade truncate (it's an `accounts` row) and
@@ -48,8 +53,8 @@ migrationRoutes.post('/excel', requireAuth, async (c) => {
       }
 
       const [job] = await sql`
-        INSERT INTO import_jobs (id, account_id, status)
-        VALUES (${jobId}, ${ipkoAccount.id}, 'pending')
+        INSERT INTO import_jobs (id, account_id, user_id, status)
+        VALUES (${jobId}, ${ipkoAccount.id}, ${user.id}, 'pending')
         RETURNING id
       `;
 
@@ -58,6 +63,7 @@ migrationRoutes.post('/excel', requireAuth, async (c) => {
           job_id: jobId,
           type: 'excel_migration',
           file_path: filePath,
+          user_id: user.id,
         })}::jsonb) as msg_id
       `;
 
