@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { serveStatic } from 'hono/bun';
 import { ledgerRoutes } from './src/interface-adapters/api/ledger';
 import { openingBalanceRoutes } from './src/interface-adapters/api/opening-balance';
 import { referenceRoutes } from './src/interface-adapters/api/reference';
@@ -56,6 +57,15 @@ app.route('/insights', insightsRoutes);
 app.route('/assets', assetsRoutes);
 app.route('/api/migration', migrationRoutes);
 app.route('/', referenceRoutes);
+
+// Production static serving — serves Vite-built frontend/dist/
+// Order: API routes already registered above (highest priority)
+// Then: /assets/* for hashed filenames
+// Then: catch-all '*' for SPA client-side routing
+if (process.env.NODE_ENV === 'production') {
+  app.use('/assets/*', serveStatic({ root: './frontend/dist' }));
+  app.get('*', serveStatic({ path: './frontend/dist/index.html' }));
+}
 
 // Export for test suites
 export { app };
