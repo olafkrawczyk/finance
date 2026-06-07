@@ -27,7 +27,7 @@
 
 **Milestone Goal:** Each user sees only their own accounts, categories, and transactions. Basic isolation with no sharing, RBAC, or cross-user visibility.
 
-- [ ] **Phase 6: Schema Migration & Backfill** — Add `user_id` columns, backfill data, set per-user unique constraints and composite indexes
+- [x] **Phase 6: Schema Migration & Backfill** — Add `user_id` columns, backfill data, set per-user unique constraints and composite indexes (completed 2026-06-07)
 - [ ] **Phase 7: Backend Scoping** — Every use-case, route handler, and seed path enforces per-user data isolation
 - [ ] **Phase 8: Worker Isolation** — PGMQ workers process only the correct user's data via scoped queries and payload-based userId
 - [ ] **Phase 9: Testing & Verification** — Comprehensive multi-user isolation matrix, negative tests, worker tests, migration rollback
@@ -51,8 +51,8 @@
 **Plans**: 2 plans
 Plans:
 
-- [ ] `06-01-PLAN.md` — Create 3 SQL migration files (008: add user_id columns, 009: per-user UNIQUE constraints, 010: index documentation)
-- [ ] `06-02-PLAN.md` — Update schema.sql to match post-migration state, create schema migration tests, update import-dedup tests
+- [x] `06-01-PLAN.md` — Create 3 SQL migration files (008: add user_id columns, 009: per-user UNIQUE constraints, 010: index documentation)
+- [x] `06-02-PLAN.md` — Update schema.sql to match post-migration state, create schema migration tests, update import-dedup tests
 
 ### Phase 7: Backend Scoping
 
@@ -67,7 +67,13 @@ Plans:
   4. All route handlers extract `userId` from session (`c.get('user').id`), never from client input; inline SQL in routes refactored into use-case functions
   5. New users automatically receive default categories and a default account on first `GET /categories` — no signup hook dependency
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+
+- [ ] `07-01-PLAN.md` — Core use-case scoping: add userId to all ledger/assets/import use-cases, create reference/use-cases.ts, extract assignCategory
+- [ ] `07-02-PLAN.md` — Migration 011 (llm_description column) + Better Auth signup hook + buildFewShotPrompt update
+- [ ] `07-03-PLAN.md` — Route handler userId extraction + inline SQL refactoring + import enqueue scoping
+- [ ] `07-04-PLAN.md` — Multi-user isolation tests + seeding tests
 
 ### Phase 8: Worker Isolation
 
@@ -126,7 +132,7 @@ Plans:
 | 4.7 Auth UI | v1.0 | 2/2 | Complete | 2026-06-07 |
 | 4.8 Excel Data Migration | v1.0 | 3/3 | Complete | 2026-06-07 |
 | 5. Polishing & Deployment | v1.0 | 4/4 | Complete | 2026-06-07 |
-| 6. Schema Migration & Backfill | v1.1 | 0/2 | Not started | - |
+| 6. Schema Migration & Backfill | v1.1 | 2/2 | Complete   | 2026-06-07 |
 | 7. Backend Scoping | v1.1 | 0/TBD | Not started | - |
 | 8. Worker Isolation | v1.1 | 0/TBD | Not started | - |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
