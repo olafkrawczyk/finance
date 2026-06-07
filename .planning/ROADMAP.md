@@ -29,7 +29,7 @@
 
 - [x] **Phase 6: Schema Migration & Backfill** — Add `user_id` columns, backfill data, set per-user unique constraints and composite indexes (completed 2026-06-07)
 - [x] **Phase 7: Backend Scoping** — Every use-case, route handler, and seed path enforces per-user data isolation (completed 2026-06-07)
-- [ ] **Phase 8: Worker Isolation** — PGMQ workers process only the correct user's data via scoped queries and payload-based userId
+- [x] **Phase 8: Worker Isolation** — PGMQ workers process only the correct user's data via scoped queries and payload-based userId (completed 2026-06-07)
 - [ ] **Phase 9: Testing & Verification** — Comprehensive multi-user isolation matrix, negative tests, worker tests, migration rollback
 - [ ] **Phase 10: Frontend Cache Isolation** — React Query keys scoped per user, cache cleared on auth change, loading skeletons
 
@@ -90,9 +90,9 @@ Plans:
 **Plans**: 3 plans
 Plans:
 
-- [ ] `08-01-PLAN.md` — CSV Import Worker Scoping: insertBatch userId param, processCsvImportJob ownership validation, processExcelMigrationJob scoped queries
-- [ ] `08-02-PLAN.md` — Insights & Ledger Scoping: getLatestTransactionDate/getInsightDataWindow WHERE fix, getCategoryAggregates userId param, createTransaction auto-trigger fix, ImportJob entity update
-- [ ] `08-03-PLAN.md` — Test Updates: import-worker test userId fix, insights-worker test user_id column fix
+- [x] `08-01-PLAN.md` — CSV Import Worker Scoping: insertBatch userId param, processCsvImportJob ownership validation, processExcelMigrationJob scoped queries
+- [x] `08-02-PLAN.md` — Insights & Ledger Scoping: getLatestTransactionDate/getInsightDataWindow WHERE fix, getCategoryAggregates userId param, createTransaction auto-trigger fix, ImportJob entity update
+- [x] `08-03-PLAN.md` — Test Updates: import-worker test userId fix, insights-worker test user_id column fix
 
 ### Phase 9: Testing & Verification
 
@@ -107,7 +107,13 @@ Plans:
   4. Concurrent user tests show no data leakage during simultaneous inserts by two users
   5. Migration rollback (`down()`) restores previous schema state — up/down round-trip verified
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+
+- [ ] `09-01-PLAN.md` — EXTEND api-scoping.test.ts: pagination, filtered query, bulk create isolation tests (TEST-01, TEST-02)
+- [ ] `09-02-PLAN.md` — EXTEND import-worker + insights-worker: multi-user worker isolation tests (TEST-03)
+- [ ] `09-03-PLAN.md` — CREATE concurrent-isolation.test.ts: concurrent user insert isolation (TEST-04)
+- [ ] `09-04-PLAN.md` — CREATE migration-rollback.test.ts: up/down schema assertions (TEST-05)
 
 ### Phase 10: Frontend Cache Isolation
 
@@ -139,7 +145,7 @@ Plans:
 | 5. Polishing & Deployment | v1.0 | 4/4 | Complete | 2026-06-07 |
 | 6. Schema Migration & Backfill | v1.1 | 2/2 | Complete   | 2026-06-07 |
 | 7. Backend Scoping | v1.1 | 4/4 | Complete   | 2026-06-07 |
-| 8. Worker Isolation | v1.1 | 0/3 | Not started | - |
+| 8. Worker Isolation | v1.1 | 3/3 | Complete | 2026-06-07 |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
 | 10. Frontend Cache Isolation | v1.1 | 0/TBD | Not started | - |
 
