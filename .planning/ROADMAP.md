@@ -87,7 +87,12 @@ Plans:
   3. Import worker validates that `account_id` belongs to `user_id` before processing records
   4. Insights worker explicitly scopes all queries by `user_id` — confirmed no regression from existing behavior
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+
+- [ ] `08-01-PLAN.md` — CSV Import Worker Scoping: insertBatch userId param, processCsvImportJob ownership validation, processExcelMigrationJob scoped queries
+- [ ] `08-02-PLAN.md` — Insights & Ledger Scoping: getLatestTransactionDate/getInsightDataWindow WHERE fix, getCategoryAggregates userId param, createTransaction auto-trigger fix, ImportJob entity update
+- [ ] `08-03-PLAN.md` — Test Updates: import-worker test userId fix, insights-worker test user_id column fix
 
 ### Phase 9: Testing & Verification
 
@@ -134,7 +139,7 @@ Plans:
 | 5. Polishing & Deployment | v1.0 | 4/4 | Complete | 2026-06-07 |
 | 6. Schema Migration & Backfill | v1.1 | 2/2 | Complete   | 2026-06-07 |
 | 7. Backend Scoping | v1.1 | 4/4 | Complete   | 2026-06-07 |
-| 8. Worker Isolation | v1.1 | 0/TBD | Not started | - |
+| 8. Worker Isolation | v1.1 | 0/3 | Not started | - |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
 | 10. Frontend Cache Isolation | v1.1 | 0/TBD | Not started | - |
 
