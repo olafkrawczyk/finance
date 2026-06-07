@@ -1,7 +1,20 @@
+function redirectToLogin() {
+  if (window.location.pathname !== '/login') {
+    window.location.pathname = '/login';
+  }
+}
+
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const res = await fetch(input, { credentials: 'include', ...init });
+  if (res.status === 401) {
+    redirectToLogin();
+    throw new Error('Session expired — redirecting to login');
+  }
+  return res;
+}
+
 export async function getAccounts() {
-  const res = await fetch('/accounts', {
-    credentials: 'include',
-  });
+  const res = await apiFetch('/accounts');
   if (!res.ok) {
     throw new Error(`Failed to fetch accounts: ${res.statusText}`);
   }
@@ -17,9 +30,8 @@ export async function startImport(file: File, accountId: string, bankFormat?: 'i
     formData.append('bank_format', bankFormat);
   }
 
-  const res = await fetch('/import', {
+  const res = await apiFetch('/import', {
     method: 'POST',
-    credentials: 'include',
     body: formData,
   });
   if (!res.ok) {
@@ -31,9 +43,7 @@ export async function startImport(file: File, accountId: string, bankFormat?: 'i
 }
 
 export async function getImportStatus(jobId: string) {
-  const res = await fetch(`/import/${jobId}`, {
-    credentials: 'include',
-  });
+  const res = await apiFetch(`/import/${jobId}`);
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
     throw new Error(errorJson.error?.message || `Failed to get status: ${res.statusText}`);
@@ -43,7 +53,7 @@ export async function getImportStatus(jobId: string) {
 }
 
 export async function getMonthlySummary() {
-  const res = await fetch('/transactions/summary', { credentials: 'include' });
+  const res = await apiFetch('/transactions/summary');
   if (!res.ok) {
     throw new Error(`Failed to fetch summary: ${res.statusText}`);
   }
@@ -67,7 +77,7 @@ export async function getTransactions(params?: {
     });
   }
   const qs = searchParams.toString();
-  const res = await fetch(`/transactions${qs ? '?' + qs : ''}`, { credentials: 'include' });
+  const res = await apiFetch(`/transactions${qs ? '?' + qs : ''}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch transactions: ${res.statusText}`);
   }
@@ -76,7 +86,7 @@ export async function getTransactions(params?: {
 }
 
 export async function getCategories() {
-  const res = await fetch('/categories', { credentials: 'include' });
+  const res = await apiFetch('/categories');
   if (!res.ok) {
     throw new Error(`Failed to fetch categories: ${res.statusText}`);
   }
@@ -92,9 +102,8 @@ export async function createTransaction(data: {
   description?: string | null;
   date: string;
 }) {
-  const res = await fetch('/transactions', {
+  const res = await apiFetch('/transactions', {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -107,7 +116,7 @@ export async function createTransaction(data: {
 }
 
 export async function getTransaction(id: string) {
-  const res = await fetch(`/transactions/${id}`, { credentials: 'include' });
+  const res = await apiFetch(`/transactions/${id}`);
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
     throw new Error(errorJson.error?.message || `Failed to fetch transaction: ${res.statusText}`);
@@ -125,9 +134,8 @@ export async function updateTransaction(id: string, data: {
   date: string;
   transfer_to_account_id?: string | null;
 }) {
-  const res = await fetch(`/transactions/${id}`, {
+  const res = await apiFetch(`/transactions/${id}`, {
     method: 'PUT',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -140,9 +148,8 @@ export async function updateTransaction(id: string, data: {
 }
 
 export async function deleteTransaction(id: string) {
-  const res = await fetch(`/transactions/${id}`, {
+  const res = await apiFetch(`/transactions/${id}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
@@ -153,9 +160,8 @@ export async function deleteTransaction(id: string) {
 }
 
 export async function assignCategory(transactionId: string, categoryId: string) {
-  const res = await fetch(`/transactions/${transactionId}/category`, {
+  const res = await apiFetch(`/transactions/${transactionId}/category`, {
     method: 'PATCH',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ category_id: categoryId }),
   });
@@ -172,7 +178,7 @@ export async function getOpeningBalance(year?: number, month?: number) {
   if (year != null) searchParams.set('year', String(year));
   if (month != null) searchParams.set('month', String(month));
   const qs = searchParams.toString();
-  const res = await fetch(`/opening-balance${qs ? '?' + qs : ''}`, { credentials: 'include' });
+  const res = await apiFetch(`/opening-balance${qs ? '?' + qs : ''}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch opening balance: ${res.statusText}`);
   }
@@ -193,7 +199,7 @@ export async function getInsights(params?: {
     });
   }
   const qs = searchParams.toString();
-  const res = await fetch(`/insights${qs ? '?' + qs : ''}`, { credentials: 'include' });
+  const res = await apiFetch(`/insights${qs ? '?' + qs : ''}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch insights: ${res.statusText}`);
   }
@@ -202,9 +208,8 @@ export async function getInsights(params?: {
 }
 
 export async function dismissInsight(insightId: string) {
-  const res = await fetch(`/insights/${insightId}/dismiss`, {
+  const res = await apiFetch(`/insights/${insightId}/dismiss`, {
     method: 'PATCH',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dismissed: true }),
   });
@@ -217,9 +222,8 @@ export async function dismissInsight(insightId: string) {
 }
 
 export async function generateInsights() {
-  const res = await fetch('/insights/generate', {
+  const res = await apiFetch('/insights/generate', {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   });
@@ -232,7 +236,7 @@ export async function generateInsights() {
 }
 
 export async function getInsightsForecast() {
-  const res = await fetch('/insights/forecast', { credentials: 'include' });
+  const res = await apiFetch('/insights/forecast');
   if (!res.ok) {
     throw new Error(`Failed to fetch forecasts: ${res.statusText}`);
   }
@@ -241,7 +245,7 @@ export async function getInsightsForecast() {
 }
 
 export async function getAssets() {
-  const res = await fetch('/assets', { credentials: 'include' });
+  const res = await apiFetch('/assets');
   if (!res.ok) {
     throw new Error(`Failed to fetch assets: ${res.statusText}`);
   }
@@ -250,9 +254,8 @@ export async function getAssets() {
 }
 
 export async function createAsset(data: { name: string; value: number }) {
-  const res = await fetch('/assets', {
+  const res = await apiFetch('/assets', {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -265,9 +268,8 @@ export async function createAsset(data: { name: string; value: number }) {
 }
 
 export async function updateAsset(id: string, data: { name: string; value: number }) {
-  const res = await fetch(`/assets/${id}`, {
+  const res = await apiFetch(`/assets/${id}`, {
     method: 'PUT',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -280,9 +282,8 @@ export async function updateAsset(id: string, data: { name: string; value: numbe
 }
 
 export async function deleteAsset(id: string) {
-  const res = await fetch(`/assets/${id}`, {
+  const res = await apiFetch(`/assets/${id}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
@@ -291,5 +292,3 @@ export async function deleteAsset(id: string) {
   const json = await res.json();
   return json.data;
 }
-
-
