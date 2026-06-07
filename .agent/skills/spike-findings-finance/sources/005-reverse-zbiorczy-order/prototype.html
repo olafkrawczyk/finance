@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinanceFlow — reverse-zbiorczy-order Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        slate: { 950: '#0f172a', 900: '#1e293b', 800: '#334155', 700: '#475569', 600: '#64748b', 500: '#94a3b8', 400: '#94a3b8', 300: '#cbd5e1', 200: '#e2e8f0', 100: '#f1f5f9' },
+        blue: { 950: '#172554', 900: '#1e3a5f', 800: '#1e40af', 600: '#2563eb', 500: '#3b82f6', 400: '#60a5fa' },
+        red: { 950: '#450a0a', 900: '#7f1d1d', 800: '#991b1b', 500: '#ef4444', 400: '#f87171', 300: '#fca5a5' },
+        green: { 400: '#4ade80', 500: '#22c55e', 950: '#052e16', 800: '#166534' },
+        yellow: { 400: '#facc15', 800: '#854d0e', 300: '#fde047', 950: '#422006' }
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { background: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">F</div>
+        <span class="text-lg font-semibold tracking-tight">Finance<span class="text-blue-500">Flow</span></span>
+      </div>
+      <div class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 font-mono">Spike 005: Newest Month First</div>
+    </div>
+  </header>
+
+  <main class="flex-grow px-6 py-12 max-w-6xl mx-auto w-full">
+    <div class="space-y-8">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-semibold text-slate-100">Zbiorczo (Miesięczne Podsumowanie)</h2>
+          <p class="text-slate-400 text-sm">Porównanie kierunku sortowania miesięcy</p>
+        </div>
+        
+        <!-- Toggle sorting order -->
+        <div class="bg-slate-900 border border-slate-800 p-1 rounded-xl flex">
+          <button id="orderAscBtn" class="px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all">Rosnąco (ASC)</button>
+          <button id="orderDescBtn" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-md transition-all">Najnowsze najpierw (DESC)</button>
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur-xl">
+        <table class="w-full min-w-[700px] text-sm text-left border-collapse" id="summaryTable">
+          <thead class="bg-slate-900 text-slate-400 uppercase text-xs font-semibold">
+            <tr>
+              <th class="px-6 py-4 text-left">Miesiąc</th>
+              <th class="px-6 py-4 text-right">Wydatki</th>
+              <th class="px-6 py-4 text-right">Przychody</th>
+              <th class="px-6 py-4 text-right">Stan konta</th>
+              <th class="px-6 py-4 text-right">Wydatki bez stałych</th>
+              <th class="px-6 py-4 text-right">Zaoszczędzone</th>
+              <th class="px-6 py-4 text-right">Zaoszcz. log</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300" id="summaryBody">
+            <!-- populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// Mock summary database row aggregates in chronological order (ascending)
+const rawDatabaseRows = [
+  { month: '2026-01', wydatki: 4200.00, przychody: 5000.00, is_fixed_cost_total: 1500.00, opening_balance: 10000.00 },
+  { month: '2026-02', wydatki: 4800.00, przychody: 5200.00, is_fixed_cost_total: 1500.00, opening_balance: null },
+  { month: '2026-03', wydatki: 3900.00, przychody: 6000.00, is_fixed_cost_total: 1600.00, opening_balance: null },
+  { month: '2026-04', wydatki: 5100.00, przychody: 5500.00, is_fixed_cost_total: 1600.00, opening_balance: null },
+  { month: '2026-05', wydatki: 4600.00, przychody: 7500.00, is_fixed_cost_total: 1600.00, opening_balance: null },
+  { month: '2026-06', wydatki: 3500.00, przychody: 7500.00, is_fixed_cost_total: 1600.00, opening_balance: null }
+];
+
+// Helper to compute running balance and derived fields (just like the use-case logic)
+function getMonthlySummaryCalculated() {
+  let currentRunningBalance = 0;
+  
+  return rawDatabaseRows.map(row => {
+    const wydatki = row.wydatki;
+    const przychody = row.przychody;
+    const fixedCost = row.is_fixed_cost_total;
+    const wydatkiBezStalych = wydatki - fixedCost;
+    const zaoszczedzone = przychody - wydatki;
+    const zaoszczedzone_log = zaoszczedzone > 0 ? Math.log10(zaoszczedzone) : 0;
+
+    if (row.opening_balance !== null) {
+      currentRunningBalance = row.opening_balance + zaoszczedzone;
+    } else {
+      currentRunningBalance += zaoszczedzone;
+    }
+
+    return {
+      month: row.month,
+      wydatki: wydatki,
+      przychody: przychody,
+      wydatki_bez_stalych: wydatkiBezStalych,
+      zaoszczedzone: zaoszczedzone,
+      zaoszczedzone_log: zaoszczedzone_log,
+      stan_konta: currentRunningBalance
+    };
+  });
+}
+
+const calculatedAsc = getMonthlySummaryCalculated();
+const calculatedDesc = [...calculatedAsc].reverse();
+
+let activeData = calculatedDesc; // Default to descending
+
+// DOM elements
+const summaryBody = document.getElementById('summaryBody');
+const orderAscBtn = document.getElementById('orderAscBtn');
+const orderDescBtn = document.getElementById('orderDescBtn');
+
+function fmt(n) {
+  return new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function render() {
+  summaryBody.innerHTML = activeData.map(row => `
+    <tr class="hover:bg-slate-900/50 transition-colors cursor-pointer">
+      <td class="px-6 py-4 text-left text-slate-200 font-medium">${row.month}</td>
+      <td class="px-6 py-4 text-right text-red-400 font-mono">${fmt(row.wydatki)}</td>
+      <td class="px-6 py-4 text-right text-green-400 font-mono">${fmt(row.przychody)}</td>
+      <td class="px-6 py-4 text-right text-blue-400 font-mono">${fmt(row.stan_konta)}</td>
+      <td class="px-6 py-4 text-right font-mono">${fmt(row.wydatki_bez_stalych)}</td>
+      <td class="px-6 py-4 text-right font-mono">${fmt(row.zaoszczedzone)}</td>
+      <td class="px-6 py-4 text-right text-slate-400 font-mono">${row.zaoszczedzone_log.toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
+
+orderAscBtn.addEventListener('click', () => {
+  activeData = calculatedAsc;
+  orderAscBtn.className = "px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-md transition-all";
+  orderDescBtn.className = "px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all";
+  render();
+});
+
+orderDescBtn.addEventListener('click', () => {
+  activeData = calculatedDesc;
+  orderDescBtn.className = "px-4 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white shadow-md transition-all";
+  orderAscBtn.className = "px-4 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all";
+  render();
+});
+
+// Init
+render();
+</script>
+</body>
+</html>

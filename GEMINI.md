@@ -1,0 +1,1 @@
+- **Spike findings for finance** (implementation patterns, constraints, gotchas) → `Skill("spike-findings-finance")`
