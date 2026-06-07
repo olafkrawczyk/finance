@@ -2,7 +2,7 @@
 -- Baseline: full current schema from schema.sql
 -- Applied via node-pg-migrate with migrationFileLanguage: 'sql'
 
--- ↑↑↑ UP MIGRATION ↑↑↑
+-- Up Migration
 
 CREATE TABLE IF NOT EXISTS accounts (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -217,7 +217,7 @@ CREATE TRIGGER trg_assets_updated_at
   BEFORE UPDATE ON assets FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- ↓↓↓ DOWN MIGRATION ↓↓↓
+-- Down Migration
 
 DROP TABLE IF EXISTS assets CASCADE;
 DROP TABLE IF EXISTS insights CASCADE;
