@@ -7,7 +7,7 @@ COPY package.json bun.lock ./
 RUN npm install --ignore-scripts
 
 # Copy build config and frontend source
-COPY vite.config.ts tsconfig.json ./
+COPY vite.config.ts tsconfig.json postcss.config.js ./
 COPY frontend/ frontend/
 
 # Build frontend (outputs to frontend/dist/)
