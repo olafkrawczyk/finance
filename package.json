@@ -4,13 +4,17 @@
     "dev:api": "bun index.ts",
     "dev:worker": "bun src/workers/insights-worker.ts",
     "dev": "concurrently -n api,worker -c cyan,magenta \"bun index.ts\" \"bun src/workers/insights-worker.ts\"",
-    "build:web": "vite build"
+    "build:web": "vite build",
+    "db:migrate": "bun src/infrastructure/db/migrate.ts",
+    "db:migrate:down": "bun src/infrastructure/db/migrate.ts down",
+    "db:migrate:fake": "bun src/infrastructure/db/migrate.ts up --fake"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
     "better-auth": "^1.6.14",
     "hono": "^4.12.23",
     "iconv-lite": "^0.7.2",
+    "node-pg-migrate": "^8.0.4",
     "postgres": "^3.4.9",
     "react-is": "^19.2.7",
     "recharts": "^3.8.1",
