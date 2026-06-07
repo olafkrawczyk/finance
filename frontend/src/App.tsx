@@ -8,8 +8,11 @@ import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
 import InsightsPage from './pages/InsightsPage';
 import AssetsPage from './pages/AssetsPage';
+import { authClient } from './lib/auth-client';
+import LoginPage from './pages/LoginPage';
 
 export default function App() {
+  const { data: session, isPending } = authClient.useSession();
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
 
   useEffect(() => {
@@ -30,6 +33,10 @@ export default function App() {
 
   // Minimal Router
   const renderContent = () => {
+    if (currentPath === '/login') {
+      return <LoginPage onSuccess={() => navigateTo('/dashboard')} />;
+    }
+
     if (currentPath === '/dashboard' || currentPath === '/') {
       return <DashboardPage onMonthClick={(month: string) => navigateTo(`/month/${month}`)} onAssetsClick={() => navigateTo('/assets')} />;
     }
@@ -99,6 +106,25 @@ export default function App() {
     );
   };
 
+  // Auth guard — loading state
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
+
+  // Auth guard — no session, show login page only (no header, no footer)
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <LoginPage onSuccess={() => navigateTo('/dashboard')} />
+      </div>
+    );
+  }
+
+  // Authenticated — full app layout with header (nav + email + logout) and footer
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans antialiased selection:bg-blue-500/30">
       {/* Header */}
@@ -112,78 +138,92 @@ export default function App() {
               Finance<span className="text-blue-500">Flow</span>
             </span>
           </div>
-          <nav className="flex flex-wrap space-x-1">
-            <button
-              onClick={() => navigateTo('/dashboard')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath === '/dashboard' || currentPath === '/'
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigateTo('/assets')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath === '/assets'
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Aktywa
-            </button>
-            <button
-              onClick={() => navigateTo('/zbiorczy')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/zbiorczy')
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Zbiorczy
-            </button>
-            <button
-              onClick={() => navigateTo('/categorize')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/categorize')
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Kategoryzuj
-            </button>
-            <button
-              onClick={() => navigateTo('/add')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/add')
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Dodaj
-            </button>
-            <button
-              onClick={() => navigateTo('/import')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/import')
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Import CSV
-            </button>
-            <button
-              onClick={() => navigateTo('/insights')}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                currentPath.startsWith('/insights')
-                  ? 'bg-slate-900 text-blue-400'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Insights
-            </button>
-          </nav>
+          <div className="flex items-center space-x-1">
+            <nav className="flex flex-wrap space-x-1">
+              <button
+                onClick={() => navigateTo('/dashboard')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath === '/dashboard' || currentPath === '/'
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => navigateTo('/assets')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath === '/assets'
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Aktywa
+              </button>
+              <button
+                onClick={() => navigateTo('/zbiorczy')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath.startsWith('/zbiorczy')
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Zbiorczy
+              </button>
+              <button
+                onClick={() => navigateTo('/categorize')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath.startsWith('/categorize')
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Kategoryzuj
+              </button>
+              <button
+                onClick={() => navigateTo('/add')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath.startsWith('/add')
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Dodaj
+              </button>
+              <button
+                onClick={() => navigateTo('/import')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath.startsWith('/import')
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Import CSV
+              </button>
+              <button
+                onClick={() => navigateTo('/insights')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath.startsWith('/insights')
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Insights
+              </button>
+            </nav>
+            {/* User info + logout */}
+            <div className="flex items-center space-x-3 ml-4">
+              <span className="text-sm text-slate-400">{session.user.email}</span>
+              <button
+                onClick={async () => {
+                  await authClient.signOut();
+                }}
+                className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                Wyloguj
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
