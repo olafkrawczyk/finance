@@ -3,6 +3,73 @@ import { getTransactions, getOpeningBalance, getCategories, deleteTransaction } 
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
 import MonthSidebar from '../components/MonthSidebar';
 
+export interface FilterState {
+  searchTerm: string;
+  selectedType: string;
+  selectedCategory: string;
+  sortBy: string;
+}
+
+export function filterAndSortTransactions(
+  transactions: NormalizedTransaction[] | null,
+  filters: FilterState
+): NormalizedTransaction[] {
+  if (!transactions) return [];
+
+  let results = transactions.filter((t) => {
+    const term = filters.searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      term === '' ||
+      (t.description?.toLowerCase().includes(term) ?? false) ||
+      (t.category_name?.toLowerCase().includes(term) ?? false);
+
+    const matchesType = filters.selectedType === 'all' || t.type === filters.selectedType;
+
+    const matchesCategory =
+      filters.selectedCategory === 'all' ||
+      (filters.selectedCategory === 'uncategorized' && t.category_name === null) ||
+      t.category_name === filters.selectedCategory;
+
+    return matchesSearch && matchesType && matchesCategory;
+  });
+
+  results.sort((a, b) => {
+    if (filters.sortBy === 'date-desc') {
+      return b.date.localeCompare(a.date) || b.id.localeCompare(a.id);
+    }
+    if (filters.sortBy === 'date-asc') {
+      return a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+    }
+    if (filters.sortBy === 'amount-desc') {
+      return b.amount - a.amount;
+    }
+    if (filters.sortBy === 'amount-asc') {
+      return a.amount - b.amount;
+    }
+    if (filters.sortBy === 'description-asc') {
+      const descA = a.description || '';
+      const descB = b.description || '';
+      return descA.localeCompare(descB, 'pl');
+    }
+    return 0;
+  });
+
+  return results;
+}
+
+export function extractUniqueCategories(
+  transactions: NormalizedTransaction[] | null
+): string[] {
+  if (!transactions) return [];
+  const categoriesSet = new Set<string>();
+  transactions.forEach((t) => {
+    if (t.category_name) {
+      categoriesSet.add(t.category_name);
+    }
+  });
+  return Array.from(categoriesSet).sort((a, b) => a.localeCompare(b, 'pl'));
+}
+
 interface MonthlyPageProps {
   yearMonth: string; // YYYY-MM
 }
@@ -30,57 +97,12 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
 
   // Extract all unique, non-null category_name values and sort alphabetically
   const uniqueCategories = useMemo(() => {
-    if (!transactions) return [];
-    const categoriesSet = new Set<string>();
-    transactions.forEach((t) => {
-      if (t.category_name) {
-        categoriesSet.add(t.category_name);
-      }
-    });
-    return Array.from(categoriesSet).sort((a, b) => a.localeCompare(b));
+    return extractUniqueCategories(transactions);
   }, [transactions]);
 
   // Filter and sort transactions in memory
   const filteredAndSortedTransactions = useMemo(() => {
-    if (!transactions) return [];
-
-    let results = transactions.filter((t) => {
-      const term = searchTerm.toLowerCase().trim();
-      const matchesSearch =
-        term === '' ||
-        (t.description?.toLowerCase().includes(term) ?? false) ||
-        (t.category_name?.toLowerCase().includes(term) ?? false);
-
-      const matchesType = selectedType === 'all' || t.type === selectedType;
-
-      const matchesCategory =
-        selectedCategory === 'all' || t.category_name === selectedCategory;
-
-      return matchesSearch && matchesType && matchesCategory;
-    });
-
-    results.sort((a, b) => {
-      if (sortBy === 'date-desc') {
-        return b.date.localeCompare(a.date);
-      }
-      if (sortBy === 'date-asc') {
-        return a.date.localeCompare(b.date);
-      }
-      if (sortBy === 'amount-desc') {
-        return b.amount - a.amount;
-      }
-      if (sortBy === 'amount-asc') {
-        return a.amount - b.amount;
-      }
-      if (sortBy === 'description-asc') {
-        const descA = a.description || '';
-        const descB = b.description || '';
-        return descA.localeCompare(descB);
-      }
-      return 0;
-    });
-
-    return results;
+    return filterAndSortTransactions(transactions, { searchTerm, selectedType, selectedCategory, sortBy });
   }, [transactions, searchTerm, selectedType, selectedCategory, sortBy]);
 
   // Parse YYYY-MM into year and month components
@@ -301,6 +323,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                 >
                   <option value="all">Wszystkie kategorie</option>
+                  <option value="uncategorized">Nieskategoryzowane</option>
                   {uniqueCategories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
