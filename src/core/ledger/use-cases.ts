@@ -182,10 +182,14 @@ export async function updateTransaction(id: string, input: UpdateTransactionInpu
 }
 
 // deleteTransaction: atomic multi-step — clear hash, clean insights, hard delete
-export async function deleteTransaction(id: string, userId: string): Promise<void> {
-  await sql.begin(async (sql) => {
+export async function deleteTransaction(id: string, userId: string): Promise<boolean> {
+  const result = await sql.begin(async (sql) => {
     // Step 1 (D-05): Clear import_hash so same CSV row can be re-imported
-    await sql`UPDATE transactions SET import_hash = NULL WHERE id = ${id} AND user_id = ${userId}`;
+    const [updateResult] = await sql`
+      UPDATE transactions SET import_hash = NULL WHERE id = ${id} AND user_id = ${userId} RETURNING id
+    `;
+    if (!updateResult) return { deleted: false };
+
     // Step 2 (D-06): Remove ID from insight linked_transaction_ids
     await sql`
       UPDATE insights
@@ -193,8 +197,12 @@ export async function deleteTransaction(id: string, userId: string): Promise<voi
       WHERE ${id} = ANY(linked_transaction_ids) AND user_id = ${userId}
     `;
     // Step 3 (D-07): Hard delete
-    await sql`DELETE FROM transactions WHERE id = ${id} AND user_id = ${userId}`;
+    const [delResult] = await sql`
+      DELETE FROM transactions WHERE id = ${id} AND user_id = ${userId} RETURNING id
+    `;
+    return { deleted: !!delResult };
   });
+  return result.deleted;
 }
 
 // listOpeningBalances: fetch all opening balances with year/month filters

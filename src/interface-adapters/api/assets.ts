@@ -73,7 +73,10 @@ assetsRoutes.delete('/:id', requireAuth, async (c) => {
   try {
     const id = c.req.param('id');
     const user = c.get('user');
-    await deleteAsset(id, user.id);
+    const deleted = await deleteAsset(id, user.id);
+    if (!deleted) {
+      return c.json({ data: null, error: { message: 'Asset not found' }, meta: null }, 404);
+    }
     return c.json({ data: { success: true }, error: null, meta: null }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
