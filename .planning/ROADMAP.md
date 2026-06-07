@@ -150,7 +150,7 @@ Plans:
 
 **Goal:** Containerize the app, automate DB migrations, manage production secrets, and harden auth for homelab deployment.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 **Wave 1** *(parallel — infrastructure)*
 
@@ -160,4 +160,4 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 — hardening)*
 
-- [ ] 05-04-PLAN.md — Auth hardening verification: Docker build, container healthcheck, UI-SPEC V-01 through V-11 checklist verification
+- [x] 05-04-PLAN.md — Auth hardening verification: Docker build, container healthcheck, UI-SPEC V-01 through V-11 checklist verification
