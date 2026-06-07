@@ -1,0 +1,84 @@
+# Requirements: v1.1 Multi-Tenant Data Isolation
+
+## Milestone Goal
+
+User-scoped data isolation — each user sees only their own accounts, categories, and transactions. Basic isolation only (no sharing, no RBAC).
+
+---
+
+## Schema Migration
+
+- [ ] **SCHEMA-01**: User can have their own accounts — `user_id` column added to `accounts` table
+- [ ] **SCHEMA-02**: User can have their own categories — `user_id` column added to `categories` table
+- [ ] **SCHEMA-03**: User can have their own transactions — `user_id` column added to `transactions` table
+- [ ] **SCHEMA-04**: User can have their own opening balances — `user_id` column added to `monthly_opening_balances` table
+- [ ] **SCHEMA-05**: User can have their own assets — `user_id` column added to `assets` table
+- [ ] **SCHEMA-06**: User can have their own import jobs — `user_id` column added to `import_jobs` table
+- [ ] **SCHEMA-07**: Existing data is assigned to the first registered user so no data is lost
+- [ ] **SCHEMA-08**: Users can have same-named categories and assets — global UNIQUE constraints become per-user composite constraints
+- [ ] **SCHEMA-09**: Per-user unique import hashes — `transactions.import_hash` becomes `UNIQUE(user_id, import_hash)`
+- [ ] **SCHEMA-10**: Per-user unique opening balance months — `monthly_opening_balances(year, month)` becomes `UNIQUE(user_id, year, month)`
+- [ ] **SCHEMA-11**: Composite indexes on `(user_id, ...)` for common query patterns
+
+## Query Scoping (API Layer)
+
+- [ ] **SCOPE-01**: Every SELECT on scoped tables filters by `user_id` — no cross-user data leakage via reads
+- [ ] **SCOPE-02**: Every INSERT on scoped tables includes `user_id` — data is tagged to the creating user
+- [ ] **SCOPE-03**: Every UPDATE on scoped tables filters by `user_id` — no cross-user data modification
+- [ ] **SCOPE-04**: Every DELETE on scoped tables filters by `user_id` — no cross-user data deletion
+- [ ] **SCOPE-05**: Ownership validation on mutations — referenced resources (account_id, category_id) validated to belong to the current user
+- [ ] **SCOPE-06**: Route handlers extract `userId` from session (`c.get('user').id`) and pass to use-cases — never trust `user_id` from client input
+- [ ] **SCOPE-07**: Inline SQL in route handlers (PATCH /:id/category) refactored into use-case functions with scoping
+
+## Worker Isolation
+
+- [ ] **WORKER-01**: PGMQ message payloads carry `user_id` for import jobs
+- [ ] **WORKER-02**: Import worker processes only the correct user's data — all inserted transactions tagged with the queuing user's ID
+- [ ] **WORKER-03**: Import worker validates account ownership before processing
+- [ ] **WORKER-04**: Insights worker verified to correctly scope by user_id (already scoped, ensure no regression)
+
+## Seed Data
+
+- [ ] **SEED-01**: Default categories seeded per new user on first data access
+- [ ] **SEED-02**: Default account created for new users
+- [ ] **SEED-03**: Lazy seeding on first `GET /categories` — no signup hook dependency
+
+## Testing
+
+- [ ] **TEST-01**: Multi-user isolation test matrix — 2+ users × 6 resource types × CREATE/READ/UPDATE/DELETE/LIST
+- [ ] **TEST-02**: Negative tests — User B receives 404 (not 403) when accessing User A's resources by ID
+- [ ] **TEST-03**: Worker isolation tests — worker processes only the correct user's queued data
+- [ ] **TEST-04**: Concurrent user tests — two users inserting data simultaneously doesn't leak data
+- [ ] **TEST-05**: Migration rollback test — schema down-migration restores previous state
+
+## Frontend Cache Isolation
+
+- [ ] **FRONTEND-01**: React Query keys prefixed with `user.id` — per-user cache separation
+- [ ] **FRONTEND-02**: Query cache cleared on login/logout — no stale data flashes across sessions
+- [ ] **FRONTEND-03**: Loading skeletons displayed during re-fetch to prevent brief cross-user data display
+
+---
+
+## Traceability
+
+| REQ-ID | Phase | Verification |
+|--------|-------|-------------|
+| SCHEMA-01–11 | | |
+| SCOPE-01–07 | | |
+| WORKER-01–04 | | |
+| SEED-01–03 | | |
+| TEST-01–05 | | |
+| FRONTEND-01–03 | | |
+
+## Future Requirements
+
+None — all identified requirements are scoped for v1.1.
+
+## Out of Scope
+
+- Row-Level Security (RLS) as primary isolation — deferred, connection-pool complexity not justified
+- Organization/team accounts — requires Better Auth Organization plugin, future milestone
+- Data sharing or permissions — no RBAC in scope
+- Multi-user household/collaboration — future milestone
+- Data export/deletion per user — future milestone
+- Separate databases per user — not justified for personal finance scale
