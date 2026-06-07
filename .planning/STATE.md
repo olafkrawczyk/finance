@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tenant Data Isolation
-status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-06-07T14:09:45.795Z"
-last_activity: 2026-06-07 — ROADMAP created for v1.1 multi-tenant isolation
+status: context_gathered
+stopped_at: Phase 7 context gathered
+last_updated: "2026-06-07T14:51:00.000Z"
+last_activity: 2026-06-07 -- Phase 07 context gathered
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+  percent: 16
 ---
 
 # Project State: Financial Planning App
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** Comprehensive financial planning with user-scoped data isolation
-**Current focus:** Phase 6 — Schema Migration & Backfill
+**Current focus:** Phase 07 — backend-scoping
 
 ## Current Position
 
-Phase: 6 of 10 (Schema Migration & Backfill)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-06-07 — ROADMAP created for v1.1 multi-tenant isolation
+Phase: 07 — CONTEXT GATHERED
+Plan: 0 of 0
+Status: Phase 07 context gathered
+Last activity: 2026-06-07 -- Phase 07 context gathered
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -62,6 +62,12 @@ Progress: [░░░░░░░░░░] 0%
 - **v1.1**: Application-layer `user_id` scoping as primary isolation mechanism (not RLS) — proven pattern from `insights` module, no new packages needed
 - **v1.1**: Existing data backfilled to first registered user — no data loss strategy
 - **v1.1**: Lazy seeding on first `GET /categories` — no signup hook dependency
+- **v1.1 (Phase 7)**: Use-case signature follows params object pattern (insights style)
+- **v1.1 (Phase 7)**: Ownership validation implicit via SQL WHERE (404 natural approach)
+- **v1.1 (Phase 7)**: Default seeding via Better Auth onSignUp hook — pivot from lazy seeding
+- **v1.1 (Phase 7)**: Reference queries extracted to `src/core/reference/use-cases.ts`
+- **v1.1 (Phase 7)**: Import enqueue scoped in Phase 7 (user_id + PGMQ payload); worker enforcement in Phase 8
+- **v1.1 (Phase 7)**: `llm_description` column to be added to categories (folded todo)
 
 ### Pending Todos
 
@@ -85,6 +91,6 @@ Items acknowledged and carried forward from v1.0 milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-07T13:48:29.478Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-schema-migration-backfill/06-CONTEXT.md
+Last session: 2026-06-07T14:51:00.000Z
+Stopped at: Phase 7 context gathered
+Resume file: .planning/phases/07-backend-scoping/07-CONTEXT.md
