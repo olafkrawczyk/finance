@@ -90,14 +90,16 @@ Plans:
 
 ### Phase 04.9: Transaction List Enhancements & Reversal (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Implement client-side transaction filters (search, type, category, and sort) and API-level reversed order for monthly summaries.
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Plans:** 4 plans (2 original + 2 review-fix)
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 04.9 to break down)
+- [x] 04.9-01-PLAN.md — Backend: Reverse order for `getMonthlySummary()`, update and verify existing tests or add specific tests for this logic.
+- [x] 04.9-02-PLAN.md — Frontend: Client-side sorting, filtering, and searching in `MonthlyPage.tsx`, matching `04.9-UI-SPEC.md` contract.
+- [ ] 04.9-03-PLAN.md — Dashboard Regression Fix: Re-reverse summary data in DashboardPage to restore chronological order for charts/regression/forecast.
+- [ ] 04.9-04-PLAN.md — Frontend Filter Fixes & Tests: Always-visible filter panel, sort tiebreaker, Polish locale, uncategorized option, pure filter functions, and 12 unit tests.
 
 ## Phase 4.5: Spiked Features
 
