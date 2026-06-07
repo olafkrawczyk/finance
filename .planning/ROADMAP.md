@@ -107,8 +107,7 @@ Plans:
   4. Concurrent user tests show no data leakage during simultaneous inserts by two users
   5. Migration rollback (`down()`) restores previous schema state — up/down round-trip verified
 
-**Plans**: 4 plans
-Plans:
+**Plans**: 4 plansPlans:
 
 - [ ] `09-01-PLAN.md` — EXTEND api-scoping.test.ts: pagination, filtered query, bulk create isolation tests (TEST-01, TEST-02)
 - [ ] `09-02-PLAN.md` — EXTEND import-worker + insights-worker: multi-user worker isolation tests (TEST-03)
