@@ -1,4 +1,5 @@
 .env
+.env.production
 node_modules/
 scratch/
 better-auth_migrations/
