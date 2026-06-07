@@ -148,9 +148,16 @@ Plans:
 
 ## Phase 5: Polishing & Deployment
 
-**Goal:** Prepare for production use.
+**Goal:** Containerize the app, automate DB migrations, manage production secrets, and harden auth for homelab deployment.
 
-- [ ] Comprehensive E2E testing.
-- [ ] Performance tuning for Postgres queries.
-- [ ] Security audit and hardening.
-- [ ] Final UI/UX polish.
+**Plans:** 4 plans in 2 waves
+
+**Wave 1** *(parallel — infrastructure)*
+
+- [ ] 05-01-PLAN.md — Docker infrastructure: multi-stage Dockerfile, entrypoint orchestration (4 processes), docker-compose app service, HEALTHCHECK
+- [ ] 05-02-PLAN.md — DB migration tooling: node-pg-migrate install, migrate.ts runner, baseline 001_initial_schema.sql, fake-baseline on dev DB
+- [ ] 05-03-PLAN.md — Production serving & secrets: Hono serveStatic, .env.example with all production vars, DEPLOYMENT.md
+
+**Wave 2** *(blocked on Wave 1 — hardening)*
+
+- [ ] 05-04-PLAN.md — Auth hardening verification: Docker build, container healthcheck, UI-SPEC V-01 through V-11 checklist verification
