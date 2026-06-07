@@ -1,13 +1,22 @@
 import { createHash } from 'crypto';
+import { unlink } from 'fs/promises';
+import * as XLSX from 'xlsx';
 import sql from '../infrastructure/db/client';
 import { ParsedTransactionSchema } from '../application/schemas/import';
 import type { ParsedTransaction } from '../core/import/entities';
+import {
+  extractWorkbook,
+  ING_BUSINESS_ACCOUNT_NAME,
+  PKO_PERSONAL_ACCOUNT_NAME,
+  type CategoryRecord,
+} from '../core/import/excel-parser';
 
 const QUEUE_NAME = 'import_queue';
 const VISIBILITY_TIMEOUT = 300; // 5 minutes
 const POLL_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
 const BATCH_SIZE = 50;
+const EXCEL_INSERT_BATCH_SIZE = 100;
 
 /**
  * Strips ING CSV metadata lines above the header
@@ -247,9 +256,181 @@ export async function insertBatch(accountId: string, transactions: ParsedTransac
 }
 
 /**
+ * Processes an enqueued `excel_migration` job: loads the workbook from disk,
+ * parses all monthly sheets chronologically, ingests opening balances and
+ * transactions (mapping categories and routing accounts), and updates job
+ * progress dynamically. Always cleans up the temporary upload file.
+ */
+export async function processExcelMigrationJob(payload: {
+  job_id: string;
+  type: 'excel_migration';
+  file_path: string;
+}): Promise<{ processed: number; errors: string[] }> {
+  const { job_id, file_path } = payload;
+  const errors: string[] = [];
+  let totalProcessed = 0;
+
+  try {
+    // 1. Update status to 'processing'
+    await sql`
+      UPDATE import_jobs
+      SET status = 'processing', updated_at = now()
+      WHERE id = ${job_id}
+    `;
+
+    // 2. Load categories and resolve account IDs
+    const dbCategories = (await sql`SELECT id, name FROM categories`) as unknown as CategoryRecord[];
+
+    const [ingAccount] = await sql`SELECT id FROM accounts WHERE name = ${ING_BUSINESS_ACCOUNT_NAME} LIMIT 1`;
+    const [pkoAccount] = await sql`SELECT id FROM accounts WHERE name = ${PKO_PERSONAL_ACCOUNT_NAME} LIMIT 1`;
+    if (!ingAccount) throw new Error(`Seeded account "${ING_BUSINESS_ACCOUNT_NAME}" not found`);
+    if (!pkoAccount) throw new Error(`Seeded account "${PKO_PERSONAL_ACCOUNT_NAME}" not found`);
+
+    const accountIdByRoute: Record<'ing_business' | 'pko_personal', string> = {
+      ing_business: ingAccount.id,
+      pko_personal: pkoAccount.id,
+    };
+
+    // 3. Load workbook and parse all monthly sheets chronologically
+    const fileBuffer = await Bun.file(file_path).arrayBuffer();
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
+    const sheets = extractWorkbook(workbook, dbCategories);
+
+    const totalRows = sheets.reduce((sum, sheet) => sum + sheet.transactions.length, 0);
+    await sql`
+      UPDATE import_jobs
+      SET total_rows = ${totalRows}, updated_at = now()
+      WHERE id = ${job_id}
+    `;
+
+    // 4. Iterate sheets chronologically: insert opening balance + transactions
+    for (const sheet of sheets) {
+      try {
+        if (sheet.openingBalance !== null) {
+          await sql`
+            INSERT INTO monthly_opening_balances (year, month, opening_balance)
+            VALUES (${sheet.meta.year}, ${sheet.meta.month}, ${sheet.openingBalance})
+            ON CONFLICT (year, month) DO NOTHING
+          `;
+        }
+
+        const transactions = sheet.transactions;
+        for (let i = 0; i < transactions.length; i += EXCEL_INSERT_BATCH_SIZE) {
+          const batch = transactions.slice(i, i + EXCEL_INSERT_BATCH_SIZE);
+
+          await sql.begin(async (sql) => {
+            for (const tx of batch) {
+              const accountId = accountIdByRoute[tx.routedAccount];
+              const categoryId = tx.category?.id ?? null;
+
+              await sql`
+                INSERT INTO transactions (
+                  account_id,
+                  category_id,
+                  type,
+                  amount,
+                  description,
+                  date,
+                  import_hash
+                )
+                VALUES (
+                  ${accountId},
+                  ${categoryId},
+                  ${tx.type},
+                  ${tx.amount},
+                  ${tx.description},
+                  ${tx.date},
+                  ${tx.importHash}
+                )
+                ON CONFLICT (import_hash) DO NOTHING
+              `;
+            }
+          });
+
+          totalProcessed += batch.length;
+          await sql`
+            UPDATE import_jobs
+            SET processed = ${totalProcessed}, updated_at = now()
+            WHERE id = ${job_id}
+          `;
+        }
+      } catch (sheetErr) {
+        const errMsg = sheetErr instanceof Error ? sheetErr.message : 'Unknown sheet error';
+        console.error(`Error processing sheet "${sheet.meta.sheetName}":`, errMsg);
+        errors.push(`Sheet ${sheet.meta.sheetName}: ${errMsg}`);
+
+        await sql`
+          UPDATE import_jobs
+          SET errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
+          WHERE id = ${job_id}
+        `;
+      }
+    }
+
+    // 5. Final status update
+    const finalStatus = errors.length > 0 && totalProcessed === 0 ? 'failed' : 'completed';
+    await sql`
+      UPDATE import_jobs
+      SET status = ${finalStatus}, updated_at = now()
+      WHERE id = ${job_id}
+    `;
+
+    return { processed: totalProcessed, errors };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown migration job error';
+    console.error(`Fatal Excel migration error on job ${job_id}:`, errMsg);
+    errors.push(`Fatal: ${errMsg}`);
+
+    await sql`
+      UPDATE import_jobs
+      SET status = 'failed', errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
+      WHERE id = ${job_id}
+    `;
+
+    return { processed: totalProcessed, errors };
+  } finally {
+    // Always cleanup the uploaded workbook, even on failure (T-MIG-05)
+    try {
+      await unlink(file_path);
+    } catch (cleanupErr) {
+      // ENOENT is fine (already deleted); log anything else
+      if ((cleanupErr as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(`Failed to delete temp upload ${file_path}:`, cleanupErr);
+      }
+    }
+  }
+}
+
+/**
  * Processes an enqueued import job
  */
 export async function processJob(payload: {
+  job_id: string;
+  type?: string;
+  account_id: string;
+  csv_content: string;
+  bank_format: 'ing' | 'ipko';
+} | {
+  job_id: string;
+  type: 'excel_migration';
+  file_path: string;
+}): Promise<{ processed: number; errors: string[] }> {
+  if ((payload as { type?: string }).type === 'excel_migration') {
+    return processExcelMigrationJob(payload as { job_id: string; type: 'excel_migration'; file_path: string });
+  }
+
+  return processCsvImportJob(payload as {
+    job_id: string;
+    account_id: string;
+    csv_content: string;
+    bank_format: 'ing' | 'ipko';
+  });
+}
+
+/**
+ * Processes an enqueued CSV (LLM-based) import job — the original pipeline.
+ */
+async function processCsvImportJob(payload: {
   job_id: string;
   account_id: string;
   csv_content: string;
