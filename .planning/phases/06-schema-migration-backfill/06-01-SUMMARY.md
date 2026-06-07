@@ -101,6 +101,10 @@ No new security-relevant surface introduced. Threat mitigations T-06-01 (ON DELE
 - Plan 02 (schema.sql update) can proceed as the next plan in Phase 6
 - Phase 7 (Query Scoping) depends on these migrations being applied first
 
+## Self-Check: PASSED
+
+All 3 migration files exist on disk. All 4 commits (3 task commits + 1 metadata commit) verified in git log.
+
 ---
 
 *Phase: 06-schema-migration-backfill*
