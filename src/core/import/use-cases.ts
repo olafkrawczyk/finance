@@ -21,12 +21,13 @@ export async function enqueueImportJob(payload: {
   account_id: string;
   csv_content: string;
   bank_format: 'ing' | 'ipko';
+  userId: string;
 }): Promise<{ job_id: string; msg_id: number }> {
   return await sql.begin(async (sql) => {
     // 1. Insert pending job
     const [job] = await sql`
-      INSERT INTO import_jobs (account_id, status)
-      VALUES (${payload.account_id}, 'pending')
+      INSERT INTO import_jobs (account_id, user_id, status)
+      VALUES (${payload.account_id}, ${payload.userId}, 'pending')
       RETURNING id
     `;
 
@@ -37,6 +38,7 @@ export async function enqueueImportJob(payload: {
         account_id: payload.account_id,
         csv_content: payload.csv_content,
         bank_format: payload.bank_format,
+        user_id: payload.userId,
       })}::jsonb) as msg_id
     `;
 
@@ -47,9 +49,9 @@ export async function enqueueImportJob(payload: {
 /**
  * Gets the status of an import job.
  */
-export async function getImportStatus(jobId: string): Promise<ImportJob | undefined> {
+export async function getImportStatus(jobId: string, userId: string): Promise<ImportJob | undefined> {
   const [row] = await sql`
-    SELECT * FROM import_jobs WHERE id = ${jobId}
+    SELECT * FROM import_jobs WHERE id = ${jobId} AND user_id = ${userId}
   `;
   return row as ImportJob | undefined;
 }
