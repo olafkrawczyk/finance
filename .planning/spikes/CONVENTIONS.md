@@ -24,6 +24,8 @@ Patterns and stack choices established across spike sessions. New spikes follow 
 - **Hover-reveal actions:** Table row actions (edit, delete) revealed on hover for clean default state
 - **Edit/delete modals:** Use modal overlay for editing all fields, confirmation dialog for deletion
 - **Trigger modifications:** DB trigger changes documented with CREATE OR REPLACE + migration notes
+- **Client-side filtering & sorting:** For datasets under 1000 items, implement filter/search/sort client-side (e.g. via React useMemo) to provide instant UI feedback without network latency
+- **Chronological running balances:** When presenting running balances in descending/reverse order, compute the cumulative totals chronologically (ascending) first, then reverse the array before outputting or rendering
 
 ## Tools & Libraries
 
