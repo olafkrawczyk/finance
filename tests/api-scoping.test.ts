@@ -588,3 +588,95 @@ describe('Group 7: Filtered Query Isolation — D-03', () => {
     await sql`DELETE FROM transactions WHERE description = 'User B filtered data'`;
   });
 });
+
+// ── Group 8: Bulk/Multi-Create User Tagging — D-04 ─────────────────────────
+
+describe('Group 8: Bulk/Multi-Create User Tagging — D-04', () => {
+  const userABulkIds: string[] = [];
+
+  it('sequentially create 3 transactions for User A, all tagged with user_id', async () => {
+    const userAId = (await sql`SELECT id FROM "user" WHERE email = ${USER_A_EMAIL}`)[0].id;
+
+    for (let i = 1; i <= 3; i++) {
+      const res = await app.request('/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: userASession,
+        },
+        body: JSON.stringify({
+          account_id: userAAccountId,
+          type: 'expense',
+          amount: `${(i * 100).toFixed(4)}`,
+          date: '2026-07-01',
+          description: `Bulk test A ${i}`,
+        }),
+      });
+      expect(res.status).toBe(201);
+      const json = await res.json();
+      expect(json.data.id).toBeDefined();
+      userABulkIds.push(json.data.id);
+    }
+
+    expect(userABulkIds).toHaveLength(3);
+
+    // Verify all are tagged to User A via SQL SELECT
+    for (const id of userABulkIds) {
+      const [row] = await sql`
+        SELECT user_id FROM transactions WHERE id = ${id}
+      `;
+      expect(row.user_id).toBe(userAId);
+    }
+  });
+
+  it('User B cannot access User A bulk-created transactions', async () => {
+    expect(userABulkIds.length).toBeGreaterThan(0);
+
+    for (const id of userABulkIds) {
+      const res = await app.request(`/transactions/${id}`, {
+        headers: { Cookie: userBSession },
+      });
+      expect(res.status).toBe(404);
+    }
+  });
+
+  it('User B own bulk-created transactions are tagged to User B', async () => {
+    const userBId = (await sql`SELECT id FROM "user" WHERE email = ${USER_B_EMAIL}`)[0].id;
+    const bIds: string[] = [];
+
+    for (let i = 1; i <= 2; i++) {
+      const res = await app.request('/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: userBSession,
+        },
+        body: JSON.stringify({
+          account_id: userBAccountId,
+          type: 'income',
+          amount: `${(i * 500).toFixed(4)}`,
+          date: '2026-07-15',
+          description: `Bulk test B ${i}`,
+        }),
+      });
+      expect(res.status).toBe(201);
+      const json = await res.json();
+      expect(json.data.id).toBeDefined();
+      bIds.push(json.data.id);
+    }
+
+    expect(bIds).toHaveLength(2);
+
+    // Verify all are tagged to User B via SQL SELECT
+    for (const id of bIds) {
+      const [row] = await sql`
+        SELECT user_id FROM transactions WHERE id = ${id}
+      `;
+      expect(row.user_id).toBe(userBId);
+    }
+  });
+
+  afterAll(async () => {
+    await sql`DELETE FROM transactions WHERE description LIKE 'Bulk test %'`;
+  });
+});
