@@ -28,7 +28,7 @@
 **Milestone Goal:** Each user sees only their own accounts, categories, and transactions. Basic isolation with no sharing, RBAC, or cross-user visibility.
 
 - [x] **Phase 6: Schema Migration & Backfill** — Add `user_id` columns, backfill data, set per-user unique constraints and composite indexes (completed 2026-06-07)
-- [ ] **Phase 7: Backend Scoping** — Every use-case, route handler, and seed path enforces per-user data isolation
+- [x] **Phase 7: Backend Scoping** — Every use-case, route handler, and seed path enforces per-user data isolation (completed 2026-06-07)
 - [ ] **Phase 8: Worker Isolation** — PGMQ workers process only the correct user's data via scoped queries and payload-based userId
 - [ ] **Phase 9: Testing & Verification** — Comprehensive multi-user isolation matrix, negative tests, worker tests, migration rollback
 - [ ] **Phase 10: Frontend Cache Isolation** — React Query keys scoped per user, cache cleared on auth change, loading skeletons
@@ -133,7 +133,7 @@ Plans:
 | 4.8 Excel Data Migration | v1.0 | 3/3 | Complete | 2026-06-07 |
 | 5. Polishing & Deployment | v1.0 | 4/4 | Complete | 2026-06-07 |
 | 6. Schema Migration & Backfill | v1.1 | 2/2 | Complete   | 2026-06-07 |
-| 7. Backend Scoping | v1.1 | 0/TBD | Not started | - |
+| 7. Backend Scoping | v1.1 | 4/4 | Complete   | 2026-06-07 |
 | 8. Worker Isolation | v1.1 | 0/TBD | Not started | - |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
 | 10. Frontend Cache Isolation | v1.1 | 0/TBD | Not started | - |
