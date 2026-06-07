@@ -19,7 +19,10 @@ export async function createTransaction(input: CreateTransactionInput & { userId
          ${input.transfer_to_account_id ?? null}, ${input.userId})
       RETURNING *
     `;
-    await sql`SELECT pgmq.send('analysis_queue', ${JSON.stringify({ transaction_id: tx.id })}::jsonb)`;
+    await sql`SELECT pgmq.send('analysis_queue', ${JSON.stringify({
+      transaction_id: tx.id,
+      user_id: input.userId,
+    })}::jsonb)`;
     return tx;
   });
   return row as Transaction;

@@ -28,10 +28,10 @@ export async function getInsightDataWindow(userId: string): Promise<TransactionD
 }
 
 // 2. getCategoryAggregates: Aggregate transaction data by category (ONLY numerical aggregates)
-export async function getCategoryAggregates(transactionIds: string[]): Promise<CategoryAggregate[]> {
+export async function getCategoryAggregates(transactionIds: string[], userId: string): Promise<CategoryAggregate[]> {
   if (transactionIds.length === 0) return [];
 
-  const anchor = await getLatestTransactionDate();
+  const anchor = await getLatestTransactionDate(userId);
   const rows = await sql`
     WITH txs AS (
       SELECT
