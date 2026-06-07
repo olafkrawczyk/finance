@@ -98,34 +98,14 @@ export function computeImportHash(date: string, amount: string, description: str
 /**
  * Formats a few-shot prompt for the LLM based on format
  */
-export function buildFewShotPrompt(format: 'ing' | 'ipko', csvRows: string, categories: string[]): string {
-  const categoryGuide = `
-Category guide (match payee/title to the best category, or null if none fits):
-- biedronka: purchases at Biedronka grocery store
-- żabka: purchases at Żabka convenience store
-- paliwo: fuel stations only — ORLEN, SHELL, BP, Moya, Lotos, any stacja paliw; NOT parking or car wash
-- taxi: taxi rides, Uber, Bolt, FreeNow
-- fun: discretionary entertainment not covered by other categories — cinema, concerts, clubs, hobby shops, AliExpress, sport events
-- VAT: VAT tax payments to Urząd Skarbowy (title contains VAT7 or VAT)
-- PIT36: income tax payments to Urząd Skarbowy (title contains PIT36, PIT4R, or PPE)
-- ZUS: payments to Zakład Ubezpieczeń Społecznych — social insurance, ubezpieczenie zdrowotne
-- auto: all car expenses EXCEPT fuel — Arval leasing, parking, car wash, oil changes, repairs, tyres, toll roads (A1, A4, viaTOLL)
-- biuro: JDG business expenses — P4 mobile, Orange telecom, Kancelaria Podatkowo-Gospodarcza accounting firm, business software/subscriptions
-- mieszkanie: rent and household bills — payments to Marta Szczygiel, electricity, water, cleaning services
-- przejazdy: city public transport only — MPK, ZTM, SKM, PKP trains, intercity buses
-- kawa: coffee shops (Ziomal, Starbucks, Costa) and online coffee orders to All Good or Konesso
-- kredyt: monthly loan instalment to Santander (~200 PLN)
-- lidl: purchases at Lidl grocery store
-- ubrania: clothing — Uniqlo, TK Maxx, eobuwie, and similar clothing/shoe stores
-- rossman: Rossmann drugstore specifically
-- apteka: pharmacies — Ziko, Dr. Max, and any payee with "apteka" in name; NOT Rossmann
-- lekarz: doctor visits, clinics, pracownia psychologiczna, medical laboratories
-- kluska: veterinary expenses (dog named Kluska) — any vet clinic or pet medical cost
-- krypto: cryptocurrency platforms — Swissborg, MetaMask, Binance, BitBay, and similar
-- inwestycje: investment transfers only — Dom Maklerski BOS, PKO Biuro Maklerskie, DM BOS
-- prezenty: gifts — jewellery stores (Tous), flowers, one-off gift purchases
-- restauracje: restaurants (Loro, Mokra Włoszka, etc.) and food delivery (Wolt, Uber Eats, Pyszne.pl)
-- foto: photography equipment, photo studio, camera purchases`;
+export function buildFewShotPrompt(
+  format: 'ing' | 'ipko',
+  csvRows: string,
+  categories: Array<{ name: string; llm_description: string | null }>
+): string {
+  const categoryGuide = categories
+    .map(cat => `- ${cat.name}: ${cat.llm_description ?? ''}`)
+    .join('\n');
 
   const ingExamples = `
 Examples (ING format):
@@ -191,7 +171,7 @@ ${csvRows}
 /**
  * Sends a batch of rows to OpenRouter for structured parsing
  */
-export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', categories: string[] = []): Promise<ParsedTransaction[]> {
+export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', categories: Array<{ name: string; llm_description: string | null }> = []): Promise<ParsedTransaction[]> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey && process.env.NODE_ENV !== 'test') {
     throw new Error('OPENROUTER_API_KEY not set');
@@ -522,9 +502,9 @@ async function processCsvImportJob(payload: {
     `;
 
     // 2. Load categories for LLM classification
-    const categoryRows = await sql`SELECT id, name FROM categories`;
+    const categoryRows = await sql`SELECT id, name, llm_description FROM categories`;
     const categoryMap = new Map<string, string>(categoryRows.map((r) => [r.name.toLowerCase(), r.id]));
-    const categoryNames = categoryRows.map((r) => r.name as string);
+    const categoryNames = categoryRows.map((r) => ({ name: r.name as string, llm_description: r.llm_description as string | null }));
 
     // 3. Preprocess CSV
     const preprocessed = bank_format === 'ing'
