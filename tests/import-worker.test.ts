@@ -7,6 +7,7 @@ let mockServer: any;
 let mockPort: number;
 let accountId: string;
 let otherAccountId: string;
+let userId: string;
 
 beforeAll(async () => {
   // Clear tables
@@ -14,9 +15,27 @@ beforeAll(async () => {
   await sql`TRUNCATE import_jobs CASCADE`;
   await sql`DELETE FROM pgmq.q_import_queue`;
 
-  const accounts = await sql`SELECT id FROM accounts ORDER BY name`;
-  if (accounts.length < 2) {
-    throw new Error('Expected at least 2 seeded accounts for transfer linking tests');
+  // Get a userId from the existing user (or create one if none exist)
+  const users = await sql`SELECT id FROM "user" LIMIT 1`;
+  if (users.length === 0) {
+    const [user] = await sql`
+      INSERT INTO "user" (id, name, email, "emailVerified")
+      VALUES ('test-user-import', 'Test User', 'test-import@example.com', true)
+      RETURNING id
+    `;
+    users.push(user);
+  }
+  userId = users[0].id;
+
+  const accounts = await sql`SELECT id FROM accounts WHERE user_id = ${userId} ORDER BY name`;
+  // Create test accounts if insufficient seeded accounts exist
+  while (accounts.length < 2) {
+    const [acct] = await sql`
+      INSERT INTO accounts (name, type, user_id)
+      VALUES (${'Test Account ' + (accounts.length + 1)}, 'personal', ${userId})
+      RETURNING id
+    `;
+    accounts.push(acct);
   }
   accountId = accounts[0].id;
   otherAccountId = accounts[1].id;
@@ -76,6 +95,7 @@ describe('Import Worker End-to-End Tests', () => {
       account_id: accountId,
       csv_content: csvContent,
       bank_format: 'ing',
+      userId,
     });
 
     expect(job_id).toBeDefined();
@@ -121,7 +141,14 @@ describe('Import Worker End-to-End Tests', () => {
     expect(job.status).toBe('completed');
     expect(job.total_rows).toBe(3);
     expect(job.processed).toBe(3);
+    expect(job.user_id).toBe(userId);
     expect(job.errors).toBeNull();
+
+    // Verify all transactions have user_id set correctly
+    const txsWithUser = await sql`
+      SELECT DISTINCT user_id FROM transactions WHERE account_id = ${accountId}
+    `;
+    expect(txsWithUser.every(t => t.user_id === userId)).toBe(true);
 
     // 7. Re-run processJob to verify deduplication via import_hash
     const resultDup = await processJob(payload);
@@ -138,8 +165,8 @@ describe('Import Worker End-to-End Tests', () => {
   it('recovers stuck jobs correctly', async () => {
     // Insert a stuck job manually with updated_at set to 20 minutes ago
     const [stuckJob] = await sql`
-      INSERT INTO import_jobs (account_id, status, created_at, updated_at)
-      VALUES (${accountId}, 'processing', now() - interval '20 minutes', now() - interval '20 minutes')
+      INSERT INTO import_jobs (account_id, status, created_at, updated_at, user_id)
+      VALUES (${accountId}, 'processing', now() - interval '20 minutes', now() - interval '20 minutes', ${userId})
       RETURNING id
     `;
 
