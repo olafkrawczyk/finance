@@ -246,4 +246,77 @@ describe('Ledger Use Cases & Database Integration', () => {
     // NOTE: insights cleanup (array_remove) is a no-op if no insight references this ID.
     // The atomic transaction ensures it doesn't throw even when no insights exist.
   });
+
+  it('returns monthly summaries in reverse chronological order with correct chronological balances', async () => {
+    // Clear tables to start fresh for this multi-month test
+    await sql`TRUNCATE transactions CASCADE`;
+    await sql`DELETE FROM monthly_opening_balances`;
+
+    // 1. Seed 2026-05:
+    // Opening balance: 10000.0000
+    // Income: 3000.0000
+    // Expense: 500.0000
+    // Savings: 2500.0000
+    // Expected running balance at end of 2026-05: 10000 + 2500 = 12500.0000
+    await createOpeningBalance({
+      year: 2026,
+      month: 5,
+      opening_balance: '10000.0000',
+      notes: 'May opening balance',
+    });
+    await createTransaction({
+      account_id: accountId,
+      type: 'income',
+      amount: '3000.0000',
+      date: '2026-05-10',
+      description: 'May Salary',
+    });
+    await createTransaction({
+      account_id: accountId,
+      type: 'expense',
+      amount: '500.0000',
+      date: '2026-05-15',
+      description: 'May Groceries',
+    });
+
+    // 2. Seed 2026-06:
+    // No opening balance is seeded for 2026-06 (inherits 2026-05 ending balance)
+    // Income: 4000.0000
+    // Expense: 1000.0000
+    // Savings: 3000.0000
+    // Expected running balance at end of 2026-06: 12500 + 3000 = 15500.0000
+    await createTransaction({
+      account_id: accountId,
+      type: 'income',
+      amount: '4000.0000',
+      date: '2026-06-12',
+      description: 'June Salary',
+    });
+    await createTransaction({
+      account_id: accountId,
+      type: 'expense',
+      amount: '1000.0000',
+      date: '2026-06-18',
+      description: 'June Rent',
+    });
+
+    const summaries = await getMonthlySummary();
+    expect(summaries).toHaveLength(2);
+
+    // Newest month first
+    expect(summaries[0].month).toBe('2026-06');
+    expect(summaries[1].month).toBe('2026-05');
+
+    // May (index 1):
+    expect(summaries[1].przychody).toBe('3000.0000');
+    expect(summaries[1].wydatki).toBe('500.0000');
+    expect(summaries[1].zaoszczedzone).toBe('2500.0000');
+    expect(summaries[1].stan_konta).toBe('12500.0000');
+
+    // June (index 0):
+    expect(summaries[0].przychody).toBe('4000.0000');
+    expect(summaries[0].wydatki).toBe('1000.0000');
+    expect(summaries[0].zaoszczedzone).toBe('3000.0000');
+    expect(summaries[0].stan_konta).toBe('15500.0000');
+  });
 });
