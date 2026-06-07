@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinanceFlow — transaction-filters Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        slate: { 950: '#0f172a', 900: '#1e293b', 800: '#334155', 700: '#475569', 600: '#64748b', 500: '#94a3b8', 400: '#94a3b8', 300: '#cbd5e1', 200: '#e2e8f0', 100: '#f1f5f9' },
+        blue: { 950: '#172554', 900: '#1e3a5f', 800: '#1e40af', 600: '#2563eb', 500: '#3b82f6', 400: '#60a5fa' },
+        red: { 950: '#450a0a', 900: '#7f1d1d', 800: '#991b1b', 500: '#ef4444', 400: '#f87171', 300: '#fca5a5' },
+        green: { 400: '#4ade80', 500: '#22c55e', 950: '#052e16', 800: '#166534' },
+        yellow: { 400: '#facc15', 800: '#854d0e', 300: '#fde047', 950: '#422006' }
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { background: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="border-b border-slate-900 bg-slate-950/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">F</div>
+        <span class="text-lg font-semibold tracking-tight">Finance<span class="text-blue-500">Flow</span></span>
+      </div>
+      <div class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 font-mono">Spike 004: Filters, Sort, Search</div>
+    </div>
+  </header>
+
+  <main class="flex-grow px-6 py-12 max-w-6xl mx-auto w-full">
+    <div class="space-y-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-semibold text-slate-100">Czerwiec 2026</h2>
+          <p class="text-slate-400 text-sm">Szczegóły przepływów dla wybranego miesiąca</p>
+        </div>
+        <div class="flex items-center space-x-2 text-xs text-slate-400" id="statsSummary">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Controls Panel (Search, Filters, Sort) -->
+      <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl backdrop-blur-xl">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <!-- Text Search -->
+          <div class="md:col-span-4 relative">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Szukaj</label>
+            <div class="relative">
+              <input type="text" id="searchInput" placeholder="Szukaj w opisie lub kategorii..." 
+                class="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none transition-all">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Type Filter -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Typ</label>
+            <select id="typeFilter" 
+              class="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none transition-all">
+              <option value="all">Wszystkie typy</option>
+              <option value="income">Przychody</option>
+              <option value="expense">Wydatki</option>
+              <option value="transfer">Przelewy</option>
+            </select>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="md:col-span-3">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kategoria</label>
+            <select id="categoryFilter" 
+              class="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none transition-all">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+
+          <!-- Sort Select -->
+          <div class="md:col-span-3">
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Sortuj według</label>
+            <select id="sortSelect" 
+              class="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none transition-all">
+              <option value="date-desc">Data: Najnowsze najpierw</option>
+              <option value="date-asc">Data: Najstarsze najpierw</option>
+              <option value="amount-desc">Kwota: Od najwyższej</option>
+              <option value="amount-asc">Kwota: Od najniższej</option>
+              <option value="desc-asc">Opis: A do Z</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="flex justify-end pt-2">
+          <button id="resetBtn" 
+            class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent hover:border-slate-700 transition-all flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.228 10H18.228M4 9h5V4" />
+            </svg>
+            <span>Resetuj filtry</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Transaction Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur-xl">
+        <table class="w-full text-sm text-left border-collapse" id="txTable">
+          <thead class="bg-slate-900 text-slate-400 uppercase text-xs font-semibold">
+            <tr>
+              <th class="px-6 py-4 text-left">Data</th>
+              <th class="px-6 py-4 text-left">Kategoria</th>
+              <th class="px-6 py-4 text-left">Opis</th>
+              <th class="px-6 py-4 text-right">Kwota</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300 animate-fade-in" id="txBody">
+            <!-- populated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden flex flex-col items-center justify-center p-12 bg-slate-900/20 border border-slate-800 border-dashed rounded-xl text-center">
+        <div class="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center text-slate-500 mb-3">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="text-sm font-medium text-slate-300">Brak pasujących transakcji</h3>
+        <p class="text-slate-500 text-xs mt-1">Spróbuj zmienić filtry lub wyszukiwaną frazę.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// Mock data set
+const transactions = [
+  { id: '1', date: '2026-06-01', description: 'Biedronka zakupy', category_name: 'Spożywcze', type: 'expense', amount: 154.23 },
+  { id: '2', date: '2026-06-03', description: 'Wynagrodzenie przelew', category_name: 'Pensja', type: 'income', amount: 7500.00 },
+  { id: '3', date: '2026-06-05', description: 'Czynsz mieszkaniowy', category_name: 'Mieszkanie', type: 'expense', amount: 2200.00 },
+  { id: '4', date: '2026-06-08', description: 'Paliwo Orlen', category_name: 'Transport', type: 'expense', amount: 320.50 },
+  { id: '5', date: '2026-06-10', description: 'Kino i popcorn', category_name: 'Rozrywka', type: 'expense', amount: 84.00 },
+  { id: '6', date: '2026-06-12', description: 'Internet Światłowód', category_name: 'Mieszkanie', type: 'expense', amount: 89.99 },
+  { id: '7', date: '2026-06-14', description: 'Zwrot za zakupy', category_name: 'Inne', type: 'income', amount: 45.00 },
+  { id: '8', date: '2026-06-15', description: 'Przelew na konto oszczędnościowe', category_name: 'Oszczędności', type: 'transfer', amount: 1000.00 },
+  { id: '9', date: '2026-06-18', description: 'Restauracja sushi', category_name: 'Rozrywka', type: 'expense', amount: 180.00 },
+  { id: '10', date: '2026-06-20', description: 'Apteka leki', category_name: 'Zdrowie', type: 'expense', amount: 64.50 },
+  { id: '11', date: '2026-06-22', description: 'Subskrypcja Spotify', category_name: 'Rozrywka', type: 'expense', amount: 29.99 },
+  { id: '12', date: '2026-06-25', description: 'Przelew od znajomego', category_name: 'Inne', type: 'income', amount: 120.00 }
+];
+
+// Extract categories
+const categories = ['all', ...new Set(transactions.map(t => t.category_name))];
+
+// DOM elements
+const searchInput = document.getElementById('searchInput');
+const typeFilter = document.getElementById('typeFilter');
+const categoryFilter = document.getElementById('categoryFilter');
+const sortSelect = document.getElementById('sortSelect');
+const resetBtn = document.getElementById('resetBtn');
+const txBody = document.getElementById('txBody');
+const emptyState = document.getElementById('emptyState');
+const statsSummary = document.getElementById('statsSummary');
+
+// Populate Category Filter dropdown
+function populateCategories() {
+  categoryFilter.innerHTML = `<option value="all">Wszystkie kategorie</option>` + 
+    categories.filter(c => c !== 'all').map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+// Format currency
+function fmt(n) {
+  return new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+// Render logic
+function renderTable(filteredTx) {
+  if (filteredTx.length === 0) {
+    txBody.innerHTML = '';
+    emptyState.classList.remove('hidden');
+    statsSummary.innerHTML = `Pokazuje 0 z ${transactions.length} transakcji`;
+    return;
+  }
+  
+  emptyState.classList.add('hidden');
+  
+  txBody.innerHTML = filteredTx.map(tx => {
+    let amountColor = 'text-slate-300';
+    let sign = '';
+    if (tx.type === 'income') {
+      amountColor = 'text-green-400';
+      sign = '+';
+    } else if (tx.type === 'expense') {
+      amountColor = 'text-red-400';
+      sign = '-';
+    } else if (tx.type === 'transfer') {
+      amountColor = 'text-yellow-400';
+      sign = '';
+    }
+
+    return `
+      <tr class="hover:bg-slate-900/50 transition-colors">
+        <td class="px-6 py-4 text-left whitespace-nowrap font-mono text-xs text-slate-400">${tx.date}</td>
+        <td class="px-6 py-4 text-left text-slate-200">
+          <span class="px-2 py-0.5 text-xs rounded-full bg-slate-800 text-slate-300 border border-slate-700">${tx.category_name}</span>
+        </td>
+        <td class="px-6 py-4 text-left text-slate-300">${tx.description}</td>
+        <td class="px-6 py-4 text-right font-mono font-medium ${amountColor}">
+          ${sign}${fmt(tx.amount)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  statsSummary.innerHTML = `Pokazuje <strong>${filteredTx.length}</strong> z <strong>${transactions.length}</strong> transakcji`;
+}
+
+// Filter and sort core logic
+function updateList() {
+  const query = searchInput.value.toLowerCase().trim();
+  const type = typeFilter.value;
+  const category = categoryFilter.value;
+  const sort = sortSelect.value;
+
+  let filtered = transactions.filter(tx => {
+    // 1. Text search
+    const matchesQuery = !query || 
+      tx.description.toLowerCase().includes(query) || 
+      tx.category_name.toLowerCase().includes(query);
+    
+    // 2. Type filter
+    const matchesType = type === 'all' || tx.type === type;
+
+    // 3. Category filter
+    const matchesCategory = category === 'all' || tx.category_name === category;
+
+    return matchesQuery && matchesType && matchesCategory;
+  });
+
+  // 4. Sorting
+  filtered.sort((a, b) => {
+    if (sort === 'date-desc') {
+      return new Date(b.date) - new Date(a.date);
+    } else if (sort === 'date-asc') {
+      return new Date(a.date) - new Date(b.date);
+    } else if (sort === 'amount-desc') {
+      return b.amount - a.amount;
+    } else if (sort === 'amount-asc') {
+      return a.amount - b.amount;
+    } else if (sort === 'desc-asc') {
+      return a.description.localeCompare(b.description, 'pl');
+    }
+    return 0;
+  });
+
+  renderTable(filtered);
+}
+
+// Event Listeners
+searchInput.addEventListener('input', updateList);
+typeFilter.addEventListener('change', updateList);
+categoryFilter.addEventListener('change', updateList);
+sortSelect.addEventListener('change', updateList);
+
+resetBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  typeFilter.value = 'all';
+  categoryFilter.value = 'all';
+  sortSelect.value = 'date-desc';
+  updateList();
+});
+
+// Init
+populateCategories();
+updateList();
+</script>
+</body>
+</html>
