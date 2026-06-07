@@ -109,7 +109,7 @@ export async function getMonthlySummary(): Promise<MonthlySummaryRow[]> {
       zaoszczedzone_log: zaoszczedzone_log.toFixed(6),
       stan_konta: currentRunningBalance.toFixed(4),
     };
-  }).reverse();
+  }).toReversed();
 }
 
 // createOpeningBalance: insert global monthly opening balance
