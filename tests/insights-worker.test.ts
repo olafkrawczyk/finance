@@ -7,7 +7,7 @@ import {
   processAnalysisMessage,
   recoverStuckInsightJobs,
 } from '../src/workers/insights-worker';
-import { insertInsightBatch, enqueueAnalysisJob } from '../src/core/insights/use-cases';
+import { insertInsightBatch, enqueueAnalysisJob, getInsightDataWindow } from '../src/core/insights/use-cases';
 import type { CategoryAggregate } from '../src/core/insights/entities';
 
 let mockServer: any;
@@ -239,5 +239,134 @@ describe('Insights Worker Operations', () => {
       SELECT msg_id FROM pgmq.q_analysis_queue WHERE msg_id = ${msg.msg_id}::bigint
     `;
     expect(remaining).toHaveLength(0);
+  });
+});
+
+// ── Insights Worker Per-User Isolation (TEST-03, D-10) ──
+
+describe('Insights Worker Per-User Isolation — D-10', () => {
+  let userBId: string;
+  let userBCategoryId: string;
+  let userBAccountId: string;
+
+  beforeAll(async () => {
+    // Create/fetch User B
+    const existingB = await sql`SELECT id FROM "user" WHERE email = 'insights-iso-b@test.com'`;
+    if (existingB.length > 0) {
+      userBId = existingB[0].id;
+    } else {
+      const [u] = await sql`
+        INSERT INTO "user" (id, name, email, "emailVerified")
+        VALUES ('insights-iso-b', 'Insights Iso B', 'insights-iso-b@test.com', true)
+        RETURNING id
+      `;
+      userBId = u.id;
+    }
+
+    // Create a category for User B
+    const bCats = await sql`SELECT id FROM categories WHERE user_id = ${userBId} LIMIT 1`;
+    if (bCats.length > 0) {
+      userBCategoryId = bCats[0].id;
+    } else {
+      const [cat] = await sql`
+        INSERT INTO categories (name, user_id) VALUES ('Insights B Cat', ${userBId}) RETURNING id
+      `;
+      userBCategoryId = cat.id;
+    }
+
+    // Create an account for User B
+    const bAccs = await sql`SELECT id FROM accounts WHERE user_id = ${userBId} LIMIT 1`;
+    if (bAccs.length > 0) {
+      userBAccountId = bAccs[0].id;
+    } else {
+      const [acct] = await sql`
+        INSERT INTO accounts (name, type, user_id) VALUES ('Insights B Account', 'personal', ${userBId}) RETURNING id
+      `;
+      userBAccountId = acct.id;
+    }
+  });
+
+  afterAll(async () => {
+    // Clean up User B's data
+    await sql`DELETE FROM insights WHERE user_id = ${userBId}`;
+    await sql`DELETE FROM transactions WHERE user_id = ${userBId}`;
+    await sql`DELETE FROM categories WHERE id = ${userBCategoryId}`;
+    await sql`DELETE FROM accounts WHERE id = ${userBAccountId}`;
+    await sql`DELETE FROM "user" WHERE id = ${userBId}`;
+  });
+
+  // D-10: Insights worker scoped window — processAnalysisMessage creates insights only for correct user
+  it('D-10: processAnalysisMessage creates insights only for the correct user', async () => {
+    // Seed a transaction for User B that could accidentally match User A's window
+    await sql`
+      INSERT INTO transactions (account_id, category_id, type, amount, description, date, user_id)
+      VALUES (${userBAccountId}, ${userBCategoryId}, 'expense', '500.00', 'User B exclusive', current_date - interval '5 days', ${userBId})
+    `;
+
+    // Insert an extra transaction for User A (userId from parent scope) — they already have 2 from outer beforeAll
+    await sql`
+      INSERT INTO transactions (account_id, category_id, type, amount, description, date, user_id)
+      VALUES (${accountId}, ${categoryId}, 'expense', '300.00', 'User A extra', current_date - interval '3 days', ${userId})
+    `;
+
+    // Enqueue and process for User A only
+    const { msg_id } = await enqueueAnalysisJob(userId);
+    const messages = await sql`SELECT * FROM pgmq.read('analysis_queue', 300, 1)`;
+    expect(messages).toHaveLength(1);
+
+    await processAnalysisMessage(messages[0]);
+
+    await sql`SELECT pgmq.archive('analysis_queue', ${messages[0].msg_id}::bigint)`;
+
+    // Verify insights created only for User A
+    const aInsights = await sql`
+      SELECT * FROM insights WHERE user_id = ${userId}
+    `;
+    expect(aInsights.length).toBeGreaterThanOrEqual(1);
+
+    // User B should have NO new insights from User A's analysis
+    const bInsights = await sql`
+      SELECT * FROM insights WHERE user_id = ${userBId}
+    `;
+    // User B's insights should be empty (User B was never analyzed)
+    expect(bInsights).toHaveLength(0);
+
+    // Clean up test transactions
+    await sql`DELETE FROM transactions WHERE description = 'User B exclusive'`;
+    await sql`DELETE FROM transactions WHERE description = 'User A extra'`;
+    await sql`DELETE FROM insights WHERE user_id = ${userId} AND title LIKE 'Spending alert%'`;
+  });
+
+  // D-10 regression: getInsightDataWindow returns per-user results (Phase 8 D-09/D-10 fix)
+  it('D-10 regression: getInsightDataWindow returns only the correct user transactions', async () => {
+    // This verifies the Phase 8 fix — getInsightDataWindow must scope by user_id
+    // Insert one recent transaction for each user with distinct amounts
+    await sql`
+      INSERT INTO transactions (account_id, category_id, type, amount, description, date, user_id)
+      VALUES (${accountId}, ${categoryId}, 'expense', '999.99', 'User A window test', current_date - interval '1 day', ${userId})
+    `;
+    await sql`
+      INSERT INTO transactions (account_id, category_id, type, amount, description, date, user_id)
+      VALUES (${userBAccountId}, ${userBCategoryId}, 'expense', '888.88', 'User B window test', current_date - interval '1 day', ${userBId})
+    `;
+
+    // Call getInsightDataWindow directly for both users to verify per-user scoping
+    const aWindow = await getInsightDataWindow(userId);
+    const bWindow = await getInsightDataWindow(userBId);
+
+    // User A's window should contain User A's window test, not User B's
+    const aHasOwn = aWindow.some(t => t.description === 'User A window test');
+    expect(aHasOwn).toBe(true);
+    const aHasOther = aWindow.some(t => t.description === 'User B window test');
+    expect(aHasOther).toBe(false);
+
+    // User B's window should contain User B's window test, not User A's
+    const bHasOwn = bWindow.some(t => t.description === 'User B window test');
+    expect(bHasOwn).toBe(true);
+    const bHasOther = bWindow.some(t => t.description === 'User A window test');
+    expect(bHasOther).toBe(false);
+
+    // Clean up
+    await sql`DELETE FROM transactions WHERE description IN ('User A window test', 'User B window test')`;
   });
 });
