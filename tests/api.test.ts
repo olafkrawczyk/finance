@@ -15,18 +15,6 @@ beforeAll(async () => {
   await sql`DELETE FROM pgmq.q_analysis_queue`;
   await sql`TRUNCATE "session", "account", "user", "verification" CASCADE`;
 
-  const accounts = await sql`SELECT id FROM accounts LIMIT 1`;
-  if (accounts.length === 0) {
-    throw new Error('No seeded accounts found');
-  }
-  accountId = accounts[0].id;
-
-  const categories = await sql`SELECT id FROM categories WHERE name = 'ZUS' LIMIT 1`;
-  if (categories.length === 0) {
-    throw new Error('No seeded categories found');
-  }
-  categoryId = categories[0].id;
-
   // Set up session cookie for the integration tests
   const res = await auth.api.signUpEmail({
     body: {
@@ -41,6 +29,19 @@ beforeAll(async () => {
     throw new Error('Failed to get session cookie for integration tests');
   }
   sessionCookie = setCookie;
+
+  // Fetch account and category IDs created by the signup hook
+  const accounts = await sql`SELECT id FROM accounts LIMIT 1`;
+  if (accounts.length === 0) {
+    throw new Error('No accounts found after signup');
+  }
+  accountId = accounts[0].id;
+
+  const categories = await sql`SELECT id FROM categories WHERE name = 'ZUS' LIMIT 1`;
+  if (categories.length === 0) {
+    throw new Error('No categories found after signup');
+  }
+  categoryId = categories[0].id;
 });
 
 describe('HTTP API Endpoints Integration Tests', () => {
