@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
-import sql from '../../infrastructure/db/client';
 import { requireAuth } from './auth';
+import { listAccounts, listCategories } from '../../core/reference/use-cases';
 
 export const referenceRoutes = new Hono();
 
 referenceRoutes.get('/accounts', requireAuth, async (c) => {
   try {
-    const rows = await sql`SELECT * FROM accounts ORDER BY name`;
+    const user = c.get('user');
+    const rows = await listAccounts(user.id);
     return c.json(
       { data: rows, error: null, meta: { total: rows.length, page: 1, per_page: rows.length } },
       200
@@ -19,7 +20,8 @@ referenceRoutes.get('/accounts', requireAuth, async (c) => {
 
 referenceRoutes.get('/categories', requireAuth, async (c) => {
   try {
-    const rows = await sql`SELECT * FROM categories ORDER BY name`;
+    const user = c.get('user');
+    const rows = await listCategories(user.id);
     return c.json(
       { data: rows, error: null, meta: { total: rows.length, page: 1, per_page: rows.length } },
       200
