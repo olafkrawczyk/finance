@@ -409,3 +409,84 @@ describe('Group 5: Unauthenticated requests return 401 (SCOPE-06)', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ── Group 6: Pagination and Offset — D-02 ──────────────────────────────────
+
+describe('Group 6: Pagination and Offset — D-02', () => {
+  beforeAll(async () => {
+    const userAId = (await sql`SELECT id FROM "user" WHERE email = ${USER_A_EMAIL}`)[0].id;
+
+    // Insert 11 transactions for User A with incrementing dates
+    for (let i = 1; i <= 11; i++) {
+      const date = `2026-06-${String(i).padStart(2, '0')}`;
+      await sql`
+        INSERT INTO transactions (account_id, type, amount, description, date, user_id)
+        VALUES (${userAAccountId}, 'expense', ${(i * 10).toFixed(4)}, ${`Page test A ${i}`}, ${date}, ${userAId})
+      `;
+    }
+  });
+
+  it('GET /transactions?page=1&per_page=5 returns 5 User A transactions', async () => {
+    const res = await app.request('/transactions?page=1&per_page=5', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBe(5);
+    for (const item of json.data) {
+      expect(item.description).toMatch(/^Page test A /);
+    }
+  });
+
+  it('GET /transactions?page=2&per_page=5 returns remaining User A transactions', async () => {
+    const res = await app.request('/transactions?page=2&per_page=5', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.length).toBe(5);
+    for (const item of json.data) {
+      expect(item.description).toMatch(/^Page test A /);
+    }
+  });
+
+  it('GET /transactions?page=3&per_page=5 returns remaining User A transactions (no cross-user data)', async () => {
+    const res = await app.request('/transactions?page=3&per_page=5', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    // 11 (Group 6) + 1 (Group 1) = 12 User A transactions; pages 1+2 consume 10; 2 remaining
+    expect(json.data.length).toBeGreaterThanOrEqual(1);
+    // Verify all items belong to User A (no cross-user data)
+    const userAId = (await sql`SELECT id FROM "user" WHERE email = ${USER_A_EMAIL}`)[0].id;
+    for (const item of json.data) {
+      expect(item.user_id).toBe(userAId);
+    }
+  });
+
+  it('GET /transactions?page=999&per_page=50 returns empty array (beyond last page)', async () => {
+    const res = await app.request('/transactions?page=999&per_page=50', {
+      headers: { Cookie: userASession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data).toHaveLength(0);
+  });
+
+  it('User B cannot see any User A paginated transactions', async () => {
+    const res = await app.request('/transactions?page=1&per_page=50', {
+      headers: { Cookie: userBSession },
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    const hasUserAPageData = json.data.some((t: any) =>
+      t.description?.startsWith('Page test A')
+    );
+    expect(hasUserAPageData).toBe(false);
+  });
+
+  afterAll(async () => {
+    await sql`DELETE FROM transactions WHERE description LIKE 'Page test A %'`;
+  });
+});
