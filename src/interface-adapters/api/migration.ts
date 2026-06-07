@@ -38,10 +38,10 @@ migrationRoutes.post('/excel', requireAuth, async (c) => {
     await Bun.write(filePath, arrayBuffer);
 
     const result = await sql.begin(async (sql) => {
-      // SECURITY: TRUNCATE is intentionally global — destroys ALL users' data.
-      // This is an admin-level migration reset. If per-user scoping is needed,
-      // replace with DELETE FROM ... WHERE user_id = ${userId}.
-      await sql`TRUNCATE transactions, monthly_opening_balances, insights, import_jobs CASCADE`;
+      await sql`DELETE FROM import_jobs WHERE user_id = ${user.id}`;
+      await sql`DELETE FROM transactions WHERE user_id = ${user.id}`;
+      await sql`DELETE FROM monthly_opening_balances WHERE user_id = ${user.id}`;
+      await sql`DELETE FROM insights WHERE user_id = ${user.id}`;
 
       // PKO Personal survives the cascade truncate (it's an `accounts` row) and
       // serves as the placeholder account reference for the migration job record.
