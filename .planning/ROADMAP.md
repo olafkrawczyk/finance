@@ -129,7 +129,7 @@ Plans:
 **Wave 1** *(parallel — backend + frontend)*
 
 - [x] 04.8-01-PLAN.md — Backend Excel Ingestion: API route `/api/migration/excel` (multipart upload), dependency on XLSX parser, PGMQ ingestion task, account routing, category mapping, destructive truncate
-- [ ] 04.8-02-PLAN.md — Frontend Migration Page: `/migration` route, prominent destructive warning modal, upload status polling, error and success indicators
+- [x] 04.8-02-PLAN.md — Frontend Migration Page: `/migration` route, prominent destructive warning modal, upload status polling, error and success indicators
 
 **Verification:** Upload `budget.xlsx` via `/migration` route after confirming warning. Verify transactions are imported correctly (ING vs. PKO routing), opening balances match, and existing data was cleared.
 
