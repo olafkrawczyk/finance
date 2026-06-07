@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-06-07T15:01:00.000Z"
+status: completed
+last_updated: "2026-06-07T13:12:11.118Z"
+last_activity: 2026-06-07 — Milestone v1.0 completed and archived
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 37
-  completed_plans: 36
-  percent: 82
+  completed_plans: 37
+  percent: 91
 ---
 
 # Project State: Financial Planning App
@@ -18,7 +19,7 @@ progress:
 
 - **Phase:** 5
 - **Goal:** Polishing and deployment readiness.
-- **Status:** Executing Phase 04.9
+- **Status:** v1.0 milestone complete
 
 ## Completed Milestones
 
@@ -46,6 +47,23 @@ progress:
 - **PGMQ:** Chosen for simplicity and transactional consistency with Postgres.
 - **OpenRouter:** To be used with high-reasoning models for financial insights.
 - **Phase 5 context:** Discussed 2026-06-07 — Docker strategy, DB migrations, secrets management, auth hardening. E2E testing deferred. CONTEXT.md written.
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-06-07:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat_gaps | Phase 04 — 04-UAT.md — 3 pending scenarios | acknowledged |
+| uat_gaps | Phase 04.8 — 04.8-UAT.md — diagnosed | acknowledged |
+| verification_gaps | Phase 03 — 03-VERIFICATION.md — human_needed | acknowledged |
+| todos | auth-guard-and-redirect.md | superseded |
+| todos | auth-login-signup-page.md | superseded |
+| todos | auth-logout-button.md | superseded |
+| todos | dockerize-app.md | superseded |
+| todos | extract-llm-descriptions.md | pending |
+| todos | production-secrets-management.md | superseded |
+| todos | xlsx-library-dependency.md | superseded |
 
 ## Performance Metrics
 
@@ -77,3 +95,14 @@ progress:
 | Phase 05 P02 | 2 min | 3 tasks | 3 files |
 | Phase 05 P03 | 1 min | 3 tasks | 3 files |
 | Phase 05 P04 | 5 min | 2 tasks | 1 file |
+
+## Current Position
+
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-07 — Milestone v1.0 completed and archived
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
