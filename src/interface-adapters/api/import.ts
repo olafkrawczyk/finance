@@ -32,10 +32,13 @@ importRoutes.post('/', requireAuth, async (c) => {
 
     const bank_format = detectFormat(csvContent);
 
+    const user = c.get('user');
+
     const { job_id } = await enqueueImportJob({
       account_id: accountId as string,
       csv_content: csvContent,
       bank_format,
+      userId: user.id,
     });
 
     return c.json({ data: { job_id }, error: null, meta: null }, 202);
@@ -48,7 +51,8 @@ importRoutes.post('/', requireAuth, async (c) => {
 importRoutes.get('/:job_id', requireAuth, async (c) => {
   try {
     const jobId = c.req.param('job_id');
-    const job = await getImportStatus(jobId);
+    const user = c.get('user');
+    const job = await getImportStatus(jobId, user.id);
     if (!job) {
       return c.json({ data: null, error: { message: 'Job not found' }, meta: null }, 404);
     }
