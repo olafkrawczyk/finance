@@ -34,6 +34,9 @@ export async function updateAsset(id: string, name: string, value: number, userI
   return row as Asset | undefined;
 }
 
-export async function deleteAsset(id: string, userId: string): Promise<void> {
-  await sql`DELETE FROM assets WHERE id = ${id} AND user_id = ${userId}`;
+export async function deleteAsset(id: string, userId: string): Promise<boolean> {
+  const [result] = await sql`
+    DELETE FROM assets WHERE id = ${id} AND user_id = ${userId} RETURNING id
+  `;
+  return !!result;
 }
