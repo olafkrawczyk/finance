@@ -27,7 +27,10 @@ export function preprocessIngCsv(content: string): string {
   if (headerIndex === -1) {
     throw new Error('ING CSV header not found');
   }
-  return lines.slice(headerIndex).join('\n');
+  const header = lines[headerIndex];
+  // Keep only lines that start with a date — strips top metadata AND bottom footer rows
+  const dataLines = lines.slice(headerIndex + 1).filter((l) => /^\d{4}-\d{2}-\d{2}/.test(l.trim()));
+  return [header, ...dataLines].join('\n');
 }
 
 /**
@@ -64,6 +67,19 @@ export async function recoverStuckJobs(): Promise<void> {
   } catch (err) {
     console.error('[stuck recovery] Failed to recover stuck jobs:', err);
   }
+
+  // Reset PGMQ visibility timeout for messages stuck mid-flight so we don't wait out the full VT
+  try {
+    const stuck = await sql`
+      SELECT msg_id FROM pgmq.q_import_queue WHERE vt > now() AND read_ct > 0
+    `;
+    for (const row of stuck) {
+      await sql`SELECT pgmq.set_vt(${QUEUE_NAME}, ${row.msg_id}::bigint, 0)`;
+      console.log(`[stuck recovery] Reset VT for PGMQ msg_id=${row.msg_id}`);
+    }
+  } catch (err) {
+    console.error('[stuck recovery] Failed to reset PGMQ message VT:', err);
+  }
 }
 
 /**
@@ -82,29 +98,72 @@ export function computeImportHash(date: string, amount: string, description: str
 /**
  * Formats a few-shot prompt for the LLM based on format
  */
-export function buildFewShotPrompt(format: 'ing' | 'ipko', csvRows: string): string {
+export function buildFewShotPrompt(format: 'ing' | 'ipko', csvRows: string, categories: string[]): string {
+  const categoryGuide = `
+Category guide (match payee/title to the best category, or null if none fits):
+- biedronka: purchases at Biedronka grocery store
+- żabka: purchases at Żabka convenience store
+- paliwo: fuel stations only — ORLEN, SHELL, BP, Moya, Lotos, any stacja paliw; NOT parking or car wash
+- taxi: taxi rides, Uber, Bolt, FreeNow
+- fun: discretionary entertainment not covered by other categories — cinema, concerts, clubs, hobby shops, AliExpress, sport events
+- VAT: VAT tax payments to Urząd Skarbowy (title contains VAT7 or VAT)
+- PIT36: income tax payments to Urząd Skarbowy (title contains PIT36, PIT4R, or PPE)
+- ZUS: payments to Zakład Ubezpieczeń Społecznych — social insurance, ubezpieczenie zdrowotne
+- auto: all car expenses EXCEPT fuel — Arval leasing, parking, car wash, oil changes, repairs, tyres, toll roads (A1, A4, viaTOLL)
+- biuro: JDG business expenses — P4 mobile, Orange telecom, Kancelaria Podatkowo-Gospodarcza accounting firm, business software/subscriptions
+- mieszkanie: rent and household bills — payments to Marta Szczygiel, electricity, water, cleaning services
+- przejazdy: city public transport only — MPK, ZTM, SKM, PKP trains, intercity buses
+- kawa: coffee shops (Ziomal, Starbucks, Costa) and online coffee orders to All Good or Konesso
+- kredyt: monthly loan instalment to Santander (~200 PLN)
+- lidl: purchases at Lidl grocery store
+- ubrania: clothing — Uniqlo, TK Maxx, eobuwie, and similar clothing/shoe stores
+- rossman: Rossmann drugstore specifically
+- apteka: pharmacies — Ziko, Dr. Max, and any payee with "apteka" in name; NOT Rossmann
+- lekarz: doctor visits, clinics, pracownia psychologiczna, medical laboratories
+- kluska: veterinary expenses (dog named Kluska) — any vet clinic or pet medical cost
+- krypto: cryptocurrency platforms — Swissborg, MetaMask, Binance, BitBay, and similar
+- inwestycje: investment transfers only — Dom Maklerski BOS, PKO Biuro Maklerskie, DM BOS
+- prezenty: gifts — jewellery stores (Tous), flowers, one-off gift purchases
+- restauracje: restaurants (Loro, Mokra Włoszka, etc.) and food delivery (Wolt, Uber Eats, Pyszne.pl)
+- foto: photography equipment, photo studio, camera purchases`;
+
   const ingExamples = `
-Example 1:
-Input: 2026-05-27;2026-05-27;" SOFTWAREMILL";"NIP/6392015837/Faktura VAT nr FVS/4 /05/2026";...;33495,98;PLN
-Output: {"date":"2026-05-27","amount":"33495.98","description":"SoftwareMill - Faktura VAT FVS/4/05/2026","raw_type":"income"}
+Examples (ING format):
+Input: 2026-05-27;2026-05-27;" SOFTWAREMILL";"NIP/6392015837/Faktura VAT FVS/4/05/2026";...;33495,98;PLN
+Output: {"date":"2026-05-27","amount":"33495.98","description":"SoftwareMill - Faktura VAT FVS/4/05/2026","raw_type":"income","category_name":null}
 
-Example 2:
-Input: 2026-05-05;2026-05-05;" P4 sp. z o. o.";"9512120077-20260603-041168C00305-0D";...;-246,00;PLN
-Output: {"date":"2026-05-05","amount":"246.00","description":"P4 sp. z o.o. - 9512120077-20260603-041168C00305-0D","raw_type":"expense"}
+Input: 2026-05-05;2026-05-05;" P4 sp. z o. o.";"9512120077-ref";...;-246,00;PLN
+Output: {"date":"2026-05-05","amount":"246.00","description":"P4 - abonament telefoniczny","raw_type":"expense","category_name":"biuro"}
 
-Example 3:
-Input: 2026-05-25;2026-05-25;" Olaf Krawczyk";"Wplata wlasna";...;-8000,00;PLN
-Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna - Olaf Krawczyk","raw_type":"transfer"}
+Input: 2026-05-16;2026-05-16;" Urząd Skarbowy";" /TI/N.../SFP/VAT7";...;-6113,00;PLN
+Output: {"date":"2026-05-16","amount":"6113.00","description":"Urząd Skarbowy - VAT7","raw_type":"expense","category_name":"VAT"}
+
+Input: 2026-05-13;2026-05-13;" Zakład Ubezpieczeń Społecznych";" Ubezpieczenie zdrowotne";...;-3476,12;PLN
+Output: {"date":"2026-05-13","amount":"3476.12","description":"ZUS - ubezpieczenie zdrowotne","raw_type":"expense","category_name":"ZUS"}
+
+Input: 2026-05-15;2026-05-15;" Arval Service Lease";"...";...;-2957,74;PLN
+Output: {"date":"2026-05-15","amount":"2957.74","description":"Arval - leasing samochodu","raw_type":"expense","category_name":"auto"}
+
+Input: 2026-05-26;2026-05-26;" ORLEN STACJA NR 4592";" Płatność BLIK";...;-142,72;PLN
+Output: {"date":"2026-05-26","amount":"142.72","description":"ORLEN - paliwo","raw_type":"expense","category_name":"paliwo"}
+
+Input: 2026-05-25;2026-05-25;" Olaf Krawczyk";" Wplata wlasna";...;-8000,00;PLN
+Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna - Olaf Krawczyk","raw_type":"transfer","category_name":null}
+
+Input: 2026-05-13;2026-05-13;" GENERALI";" Prowizja Usługi IT";...;5864,08;PLN
+Output: {"date":"2026-05-13","amount":"5864.08","description":"Generali - prowizja ubezpieczeniowa","raw_type":"income","category_name":null}
 `;
 
   const ipkoExamples = `
-Example 1:
+Examples (IPKO format):
 Input: "2026-05-25","2026-05-25","Przelew na konto","+8000.00","PLN","+8200.05","Tytu: Wplata wlasna"
-Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna","raw_type":"transfer"}
+Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna","raw_type":"transfer","category_name":null}
 
-Example 2:
-Input: "2026-05-04","2026-05-04","Patno kart","-11.99","PLN","+5421.49","Tytu: ZABKA Z0685 K.2"
-Output: {"date":"2026-05-04","amount":"11.99","description":"ZABKA Z0685 K.2","raw_type":"expense"}
+Input: "2026-05-04","2026-05-04","Platnosc karta","-11.99","PLN","+5421.49","Tytu: ZABKA Z0685 K.2"
+Output: {"date":"2026-05-04","amount":"11.99","description":"Żabka","raw_type":"expense","category_name":"żabka"}
+
+Input: "2026-05-10","2026-05-10","Platnosc karta","-142.00","PLN","...","Tytu: ORLEN STACJA 199"
+Output: {"date":"2026-05-10","amount":"142.00","description":"ORLEN - paliwo","raw_type":"expense","category_name":"paliwo"}
 `;
 
   return `
@@ -114,12 +173,15 @@ Bank format: ${format === 'ing' ? 'ING (semicolon-delimited, comma decimal, wind
 Rules:
 - Date format: YYYY-MM-DD
 - Amount: ALWAYS positive decimal string with dot separator (e.g., "123.45")
-- Description: concise, clean description (remove transaction IDs, card numbers, bank names)
-- raw_type: "income" for money received, "expense" for money spent, "transfer" for between own accounts
+- Description: concise Polish description (remove transaction IDs, card numbers, raw bank codes)
+- raw_type: "income" for money received, "expense" for money spent, "transfer" for own-account transfers
+- category_name: use the category guide below — assign null if nothing clearly matches
+${categoryGuide}
 
 ${format === 'ing' ? ingExamples : ipkoExamples}
 
 Now parse these rows. Return ONLY a JSON object with a "transactions" array. No markdown, no explanations.
+Each output row must correspond exactly to one input row — do not merge or split rows.
 
 Rows to parse:
 ${csvRows}
@@ -129,7 +191,7 @@ ${csvRows}
 /**
  * Sends a batch of rows to OpenRouter for structured parsing
  */
-export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko'): Promise<ParsedTransaction[]> {
+export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', categories: string[] = []): Promise<ParsedTransaction[]> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey && process.env.NODE_ENV !== 'test') {
     throw new Error('OPENROUTER_API_KEY not set');
@@ -138,7 +200,7 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko'): P
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1';
   const model = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
 
-  const prompt = buildFewShotPrompt(format, csvRows);
+  const prompt = buildFewShotPrompt(format, csvRows, categories);
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -168,8 +230,9 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko'): P
                     amount: { type: 'string' },
                     description: { type: 'string' },
                     raw_type: { type: 'string', enum: ['income', 'expense', 'transfer'] },
+                    category_name: { type: ['string', 'null'] },
                   },
-                  required: ['date', 'amount', 'description', 'raw_type'],
+                  required: ['date', 'amount', 'description', 'raw_type', 'category_name'],
                   additionalProperties: false,
                 },
               },
@@ -192,10 +255,14 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko'): P
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error('Empty message content returned from OpenRouter');
+    console.error('[import] OpenRouter returned empty content. Model:', model, 'Response:', JSON.stringify(data).slice(0, 500));
+    throw new Error(`Empty content from OpenRouter (model: ${model}). Check worker logs for full response.`);
   }
 
-  const parsedJson = JSON.parse(content);
+  // Extract JSON — some models wrap in markdown fences even when asked not to
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/(\{[\s\S]*\})/);
+  const jsonStr = jsonMatch ? jsonMatch[1] : content;
+  const parsedJson = JSON.parse(jsonStr);
   const rawTransactions = parsedJson.transactions;
   if (!Array.isArray(rawTransactions)) {
     throw new Error('OpenRouter response did not contain a transactions array');
@@ -217,8 +284,11 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko'): P
 /**
  * Inserts a batch of transactions with de-duplication and transfer account linking
  */
-export async function insertBatch(accountId: string, transactions: ParsedTransaction[]): Promise<void> {
-  // Fetch all accounts to dynamically link transfer destinations (02-REVIEWS.md)
+export async function insertBatch(
+  accountId: string,
+  transactions: ParsedTransaction[],
+  categoryMap: Map<string, string> = new Map()
+): Promise<void> {
   const accounts = await sql`SELECT id FROM accounts`;
   const otherAccount = accounts.find((a) => a.id !== accountId);
   const otherAccountId = otherAccount?.id ?? null;
@@ -227,6 +297,7 @@ export async function insertBatch(accountId: string, transactions: ParsedTransac
     for (const tx of transactions) {
       const hash = computeImportHash(tx.date, tx.amount, tx.description);
       const transferToAccountId = tx.raw_type === 'transfer' ? otherAccountId : null;
+      const categoryId = tx.category_name ? (categoryMap.get(tx.category_name.toLowerCase()) ?? null) : null;
 
       await sql`
         INSERT INTO transactions (
@@ -241,7 +312,7 @@ export async function insertBatch(accountId: string, transactions: ParsedTransac
         )
         VALUES (
           ${accountId},
-          null,
+          ${categoryId},
           ${tx.raw_type},
           ${tx.amount},
           ${tx.description},
@@ -268,7 +339,6 @@ export async function processExcelMigrationJob(payload: {
 }): Promise<{ processed: number; errors: string[] }> {
   const { job_id, file_path } = payload;
   const errors: string[] = [];
-  let totalProcessed = 0;
 
   try {
     // 1. Update status to 'processing'
@@ -296,6 +366,7 @@ export async function processExcelMigrationJob(payload: {
     const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
     const sheets = extractWorkbook(workbook, dbCategories);
 
+    // 4. Compute total rows for progress tracking (BEFORE outer transaction)
     const totalRows = sheets.reduce((sum, sheet) => sum + sheet.transactions.length, 0);
     await sql`
       UPDATE import_jobs
@@ -303,27 +374,37 @@ export async function processExcelMigrationJob(payload: {
       WHERE id = ${job_id}
     `;
 
-    // 4. Iterate sheets chronologically: insert opening balance + transactions
-    for (const sheet of sheets) {
-      try {
-        if (sheet.openingBalance !== null) {
-          await sql`
-            INSERT INTO monthly_opening_balances (year, month, opening_balance)
-            VALUES (${sheet.meta.year}, ${sheet.meta.month}, ${sheet.openingBalance})
-            ON CONFLICT (year, month) DO NOTHING
-          `;
-        }
+    // 5. Empty workbook guard — no parseable data found (GAP-04)
+    if (totalRows === 0) {
+      const errMsg = 'No parseable data found in workbook';
+      await sql`
+        UPDATE import_jobs
+        SET status = 'failed', errors = array_append(ARRAY[]::text[], ${errMsg}), processed = 0, updated_at = now()
+        WHERE id = ${job_id}
+      `;
+      return { processed: 0, errors: [errMsg] };
+    }
 
-        const transactions = sheet.transactions;
-        for (let i = 0; i < transactions.length; i += EXCEL_INSERT_BATCH_SIZE) {
-          const batch = transactions.slice(i, i + EXCEL_INSERT_BATCH_SIZE);
+    // 6. Outer transaction — all data operations are atomic (GAP-03)
+    await sql.begin(async (tx) => {
+      for (const sheet of sheets) {
+        try {
+          if (sheet.openingBalance !== null) {
+            await tx`
+              INSERT INTO monthly_opening_balances (year, month, opening_balance)
+              VALUES (${sheet.meta.year}, ${sheet.meta.month}, ${sheet.openingBalance})
+              ON CONFLICT (year, month) DO NOTHING
+            `;
+          }
 
-          await sql.begin(async (sql) => {
-            for (const tx of batch) {
-              const accountId = accountIdByRoute[tx.routedAccount];
-              const categoryId = tx.category?.id ?? null;
+          const transactions = sheet.transactions;
+          for (let i = 0; i < transactions.length; i += EXCEL_INSERT_BATCH_SIZE) {
+            const batch = transactions.slice(i, i + EXCEL_INSERT_BATCH_SIZE);
+            for (const txn of batch) {
+              const accountId = accountIdByRoute[txn.routedAccount];
+              const categoryId = txn.category?.id ?? null;
 
-              await sql`
+              await tx`
                 INSERT INTO transactions (
                   account_id,
                   category_id,
@@ -336,46 +417,41 @@ export async function processExcelMigrationJob(payload: {
                 VALUES (
                   ${accountId},
                   ${categoryId},
-                  ${tx.type},
-                  ${tx.amount},
-                  ${tx.description},
-                  ${tx.date},
-                  ${tx.importHash}
+                  ${txn.type},
+                  ${txn.amount},
+                  ${txn.description},
+                  ${txn.date},
+                  ${txn.importHash}
                 )
                 ON CONFLICT (import_hash) DO NOTHING
               `;
             }
-          });
-
-          totalProcessed += batch.length;
-          await sql`
-            UPDATE import_jobs
-            SET processed = ${totalProcessed}, updated_at = now()
-            WHERE id = ${job_id}
-          `;
+          }
+        } catch (sheetErr) {
+          const errMsg = sheetErr instanceof Error ? sheetErr.message : 'Unknown sheet error';
+          console.error(`Error processing sheet "${sheet.meta.sheetName}":`, errMsg);
+          throw new Error(`Sheet ${sheet.meta.sheetName}: ${errMsg}`);
         }
-      } catch (sheetErr) {
-        const errMsg = sheetErr instanceof Error ? sheetErr.message : 'Unknown sheet error';
-        console.error(`Error processing sheet "${sheet.meta.sheetName}":`, errMsg);
-        errors.push(`Sheet ${sheet.meta.sheetName}: ${errMsg}`);
-
-        await sql`
-          UPDATE import_jobs
-          SET errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
-          WHERE id = ${job_id}
-        `;
       }
-    }
+    });
 
-    // 5. Final status update
-    const finalStatus = errors.length > 0 && totalProcessed === 0 ? 'failed' : 'completed';
+    // 7. Outer transaction committed — all data persisted atomically
     await sql`
       UPDATE import_jobs
-      SET status = ${finalStatus}, updated_at = now()
+      SET status = 'completed', processed = ${totalRows}, updated_at = now()
       WHERE id = ${job_id}
     `;
 
-    return { processed: totalProcessed, errors };
+    // Success path: delete temp file only on completion (GAP-02)
+    try {
+      await unlink(file_path);
+    } catch (cleanupErr) {
+      if ((cleanupErr as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(`Failed to delete temp upload ${file_path}:`, cleanupErr);
+      }
+    }
+
+    return { processed: totalRows, errors: [] };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : 'Unknown migration job error';
     console.error(`Fatal Excel migration error on job ${job_id}:`, errMsg);
@@ -387,17 +463,9 @@ export async function processExcelMigrationJob(payload: {
       WHERE id = ${job_id}
     `;
 
-    return { processed: totalProcessed, errors };
-  } finally {
-    // Always cleanup the uploaded workbook, even on failure (T-MIG-05)
-    try {
-      await unlink(file_path);
-    } catch (cleanupErr) {
-      // ENOENT is fine (already deleted); log anything else
-      if ((cleanupErr as NodeJS.ErrnoException)?.code !== 'ENOENT') {
-        console.error(`Failed to delete temp upload ${file_path}:`, cleanupErr);
-      }
-    }
+    // Do NOT delete temp file on failure — it must persist for PGMQ retries (GAP-02)
+
+    return { processed: 0, errors };
   }
 }
 
@@ -441,6 +509,11 @@ async function processCsvImportJob(payload: {
   let totalProcessed = 0;
 
   try {
+    // 0. Input validation guard: prevent crash when csv_content is missing (GAP-01)
+    if (typeof csv_content !== 'string' || csv_content.length === 0) {
+      throw new Error(`Invalid or missing csv_content for job ${job_id}`);
+    }
+
     // 1. Update status to 'processing'
     await sql`
       UPDATE import_jobs
@@ -448,7 +521,12 @@ async function processCsvImportJob(payload: {
       WHERE id = ${job_id}
     `;
 
-    // 2. Preprocess CSV
+    // 2. Load categories for LLM classification
+    const categoryRows = await sql`SELECT id, name FROM categories`;
+    const categoryMap = new Map<string, string>(categoryRows.map((r) => [r.name.toLowerCase(), r.id]));
+    const categoryNames = categoryRows.map((r) => r.name as string);
+
+    // 3. Preprocess CSV
     const preprocessed = bank_format === 'ing'
       ? preprocessIngCsv(csv_content)
       : preprocessIpkoCsv(csv_content);
@@ -464,21 +542,31 @@ async function processCsvImportJob(payload: {
     const header = lines[0];
     const dataRows = lines.slice(1);
 
+    console.log(`[import] Job ${job_id} started — ${totalRows} rows to process`);
+
     // 3. Process batches of 50
     for (let i = 0; i < dataRows.length; i += BATCH_SIZE) {
       const batch = dataRows.slice(i, i + BATCH_SIZE);
       const batchCsvText = [header, ...batch].join('\n');
 
       try {
-        const parsed = await callOpenRouter(batchCsvText, bank_format);
-
-        // MITIGATION: Assert LLM returned row count equals input row count (02-REVIEWS.md)
-        if (parsed.length !== batch.length) {
-          throw new Error(`LLM returned ${parsed.length} transactions, but input had ${batch.length} rows.`);
+        const MAX_BATCH_RETRIES = 3;
+        let parsed: ParsedTransaction[] | null = null;
+        for (let attempt = 1; attempt <= MAX_BATCH_RETRIES; attempt++) {
+          const result = await callOpenRouter(batchCsvText, bank_format, categoryNames);
+          if (result.length === batch.length) {
+            parsed = result;
+            break;
+          }
+          console.warn(`[import] Batch rows ${i}–${i + batch.length - 1} attempt ${attempt}/${MAX_BATCH_RETRIES}: LLM returned ${result.length}, expected ${batch.length}`);
+        }
+        if (!parsed) {
+          throw new Error(`LLM repeatedly returned wrong row count for batch rows ${i}–${i + batch.length - 1} after ${MAX_BATCH_RETRIES} attempts`);
         }
 
-        await insertBatch(account_id, parsed);
+        await insertBatch(account_id, parsed, categoryMap);
         totalProcessed += batch.length;
+        console.log(`[import] Batch rows ${i}–${i + batch.length - 1}: ${parsed.length} transactions saved`);
 
         await sql`
           UPDATE import_jobs
@@ -487,7 +575,7 @@ async function processCsvImportJob(payload: {
         `;
       } catch (batchErr) {
         const errMsg = batchErr instanceof Error ? batchErr.message : 'Unknown batch error';
-        console.error(`Error processing batch at row ${i}:`, errMsg);
+        console.error(`[import] Batch rows ${i}–${i + batch.length - 1} failed:`, errMsg);
         errors.push(`Row ${i}-${i + batch.length}: ${errMsg}`);
 
         await sql`
@@ -505,11 +593,12 @@ async function processCsvImportJob(payload: {
       SET status = ${finalStatus}, updated_at = now()
       WHERE id = ${job_id}
     `;
+    console.log(`[import] Job ${job_id} ${finalStatus} — ${totalProcessed}/${totalRows} rows, ${errors.length} batch error(s)`);
 
     return { processed: totalProcessed, errors };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : 'Unknown job error';
-    console.error(`Fatal job processing error on job ${job_id}:`, errMsg);
+    console.error(`[import] Job ${job_id} fatal error:`, errMsg);
     errors.push(`Fatal: ${errMsg}`);
 
     await sql`
@@ -544,22 +633,43 @@ async function workerLoop(): Promise<void> {
       const readCount = Number(msg.read_ct);
       const payload = typeof msg.message === 'string' ? JSON.parse(msg.message) : msg.message;
 
+      console.log(`[import] Picked up job ${payload.job_id} (msg=${msg.msg_id}, attempt ${readCount + 1}/${MAX_RETRIES})`);
+
       try {
         const { processed, errors } = await processJob(payload);
         if (errors.length > 0 && processed === 0) {
           throw new Error('All batches failed');
         }
         await sql`SELECT pgmq.archive(${QUEUE_NAME}, ${msg.msg_id}::bigint)`;
+        console.log(`[import] Archived msg=${msg.msg_id}`);
       } catch (err) {
-        console.error(`Job ${msg.msg_id} failed (attempt ${readCount}):`, err);
-        if (readCount >= MAX_RETRIES) {
-          console.error(`Max retries reached for job ${msg.msg_id}. Deleting.`);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[import] Job ${payload.job_id} failed (attempt ${readCount + 1}/${MAX_RETRIES}): ${errMsg}`);
+        if (readCount + 1 >= MAX_RETRIES) {
+          console.error(`[import] Max retries reached for job ${payload.job_id}. Deleting msg=${msg.msg_id}.`);
+
+          // Clean up temp file for excel_migration payloads on max retries exhausted (GAP-02)
+          if ((payload as { type?: string }).type === 'excel_migration') {
+            const file_path = (payload as { file_path?: string }).file_path;
+            if (file_path) {
+              try {
+                await unlink(file_path);
+              } catch (cleanupErr) {
+                if ((cleanupErr as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+                  console.error(`Failed to delete temp upload ${file_path} on max retries:`, cleanupErr);
+                }
+              }
+            }
+          }
+
           await sql`
             UPDATE import_jobs
             SET status = 'failed', errors = array_append(COALESCE(errors, ARRAY[]::text[]), 'Max retries exceeded')
             WHERE id = ${payload.job_id}
           `;
           await sql`SELECT pgmq.delete(${QUEUE_NAME}, ${msg.msg_id}::bigint)`;
+        } else {
+          console.log(`[import] Will retry after ${VISIBILITY_TIMEOUT}s`);
         }
       }
     } catch (err) {

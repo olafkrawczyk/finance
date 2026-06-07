@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { app } from '../index';
 import { auth } from '../src/auth';
 import sql from '../src/infrastructure/db/client';
-import { processExcelMigrationJob } from '../src/workers/import-worker';
+import { processExcelMigrationJob, processJob } from '../src/workers/import-worker';
 
 let sessionCookie: string;
 let pkoAccountId: string;
@@ -179,7 +179,21 @@ describe('Excel migration worker processing', () => {
     expect(await Bun.file(filePath).exists()).toBe(false);
   });
 
-  it('marks the job failed and records error messages when the workbook structure is invalid', async () => {
+  it('throws a meaningful error when csv_content is undefined for CSV jobs (GAP-01)', async () => {
+    // processJob with a CSV-type payload that has no csv_content should fail with the guard message
+    const testJobId = '00000000-0000-0000-0000-000000000001';
+    const result = await processJob({
+      job_id: testJobId,
+      account_id: pkoAccountId,
+      csv_content: undefined as unknown as string,
+      bank_format: 'ing',
+    });
+    expect(result.processed).toBe(0);
+    expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    expect(result.errors[0]).toContain(`Invalid or missing csv_content for job ${testJobId}`);
+  });
+
+  it('marks the job failed when the workbook has no parseable data (GAP-04)', async () => {
     const buffer = buildInvalidWorkbook();
     const filePath = `/tmp/migration-worker-invalid-${crypto.randomUUID()}.xlsx`;
     await Bun.write(filePath, buffer);
@@ -194,13 +208,17 @@ describe('Excel migration worker processing', () => {
       file_path: filePath,
     });
 
-    // No parseable sheets/transactions -> zero processed, job marked failed or completed-empty
+    // No parseable sheets/transactions -> zero processed, job marked failed
     expect(result.processed).toBe(0);
 
     const [updatedJob] = await sql`SELECT * FROM import_jobs WHERE id = ${job.id}`;
-    expect(['failed', 'completed']).toContain(updatedJob.status);
+    expect(updatedJob.status).toBe('failed');
+    expect(updatedJob.errors).toContain('No parseable data found in workbook');
 
-    // Temp file cleaned up regardless of outcome
-    expect(await Bun.file(filePath).exists()).toBe(false);
+    // Temp file preserved on failure for PGMQ retry (GAP-02)
+    expect(await Bun.file(filePath).exists()).toBe(true);
+
+    // Clean up temp file after assertion
+    await Bun.file(filePath).delete().catch(() => {});
   });
 });
