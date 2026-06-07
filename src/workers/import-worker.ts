@@ -84,14 +84,14 @@ export async function recoverStuckJobs(): Promise<void> {
 
 /**
  * Computes the unique SHA-256 hash for deduplication.
- * WARNING: Because the hash only uses date, amount, and description,
- * legitimate identical transactions occurring on the same day (e.g. two separate
- * purchases of 15.00 PLN at the same coffee shop) will share the same hash
- * and be silently skipped. This is a known requirement-level limitation.
+ * WARNING: Because the hash only uses date, amount, description, and account_id,
+ * legitimate identical transactions occurring on the same day at the same account
+ * (e.g. two separate purchases of 15.00 PLN at the same coffee shop) will share
+ * the same hash and be silently skipped. This is a known requirement-level limitation.
  */
-export function computeImportHash(date: string, amount: string, description: string): string {
+export function computeImportHash(date: string, amount: string, description: string, accountId: string): string {
   return createHash('sha256')
-    .update(`${date}|${amount}|${description}`)
+    .update(`${date}|${amount}|${description}|${accountId}`)
     .digest('hex');
 }
 
@@ -295,7 +295,7 @@ export async function insertBatch(
 
   await sql.begin(async (sql) => {
     for (const tx of transactions) {
-      const hash = computeImportHash(tx.date, tx.amount, tx.description);
+      const hash = computeImportHash(tx.date, tx.amount, tx.description, accountId);
       const transferToAccountId = tx.raw_type === 'transfer' ? otherAccountId : null;
       const categoryId = tx.category_name ? (categoryMap.get(tx.category_name.toLowerCase()) ?? null) : null;
 
