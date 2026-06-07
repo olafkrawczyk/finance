@@ -4,6 +4,7 @@
 export interface ImportJob {
   id: string;                          // UUID
   account_id: string;
+  user_id: string;                     // DB schema: user_id TEXT NOT NULL
   status: 'pending' | 'processing' | 'completed' | 'failed';
   total_rows: number | null;
   processed: number;
