@@ -93,7 +93,6 @@ Plans:
 **Goal:** Implement client-side transaction filters (search, type, category, and sort) and API-level reversed order for monthly summaries.
 **Depends on:** Phase 4
 **Plans:** 4 plans (2 original + 2 review-fix)
-
 Plans:
 
 - [x] 04.9-01-PLAN.md — Backend: Reverse order for `getMonthlySummary()`, update and verify existing tests or add specific tests for this logic.
