@@ -61,10 +61,15 @@ app.route('/', referenceRoutes);
 // Production static serving — serves Vite-built frontend/dist/
 // Order: API routes already registered above (highest priority)
 // Then: /assets/* for hashed filenames
-// Then: catch-all '*' for SPA client-side routing
+// Then: SPA fallback via notFound (only fires when no route matched)
 if (process.env.NODE_ENV === 'production') {
   app.use('/assets/*', serveStatic({ root: './frontend/dist' }));
-  app.get('*', serveStatic({ path: './frontend/dist/index.html' }));
+  app.notFound(async (c) => {
+    const file = Bun.file('./frontend/dist/index.html');
+    const exists = await file.exists();
+    if (exists) return new Response(await file.text(), { headers: { 'Content-Type': 'text/html' } });
+    return c.text('Not Found', 404);
+  });
 }
 
 // Export for test suites
