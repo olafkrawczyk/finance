@@ -576,26 +576,24 @@ COPY entrypoint.sh /app/entrypoint.sh
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed. (Table not empty — A1 requires testing.)
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **node-pg-migrate SQL file format — single file vs grouped up/down?**
+1. **[RESOLVED] node-pg-migrate SQL file format — single file vs grouped up/down?**
    - What we know: node-pg-migrate supports both single `.sql` files (with `-- migrate:up`/`-- migrate:down` markers) and grouped `*.up.sql` + `*.down.sql` files.
-   - What's unclear: The exact marker syntax for single-file format with `migrationFileLanguage: 'sql'`.
-   - Recommendation: Default to separate `*.up.sql` / `*.down.sql` files with the grouped SQL loader strategy. This is explicitly documented and unambiguous. Test the single-file format during implementation if preferred.
+   - Resolution: Plans use separate `*.up.sql` / `*.down.sql` files with the grouped SQL loader strategy — explicitly documented and unambiguous.
+   - Plan: 05-02 creates `001_initial_schema.sql` with up/down sections.
 
-2. **Do existing migration files (003-006) need to be converted to node-pg-migrate format?**
-   - What we know: The existing schema.sql represents the full current state. The existing migration files in `src/infrastructure/db/migrations/` were applied manually.
-   - What's unclear: Whether to (a) create a single `001_initial_schema.sql` baseline, or (b) convert each existing migration to node-pg-migrate format.
-   - Recommendation: Option (a) — create a single `001_initial_schema.sql` that contains the full current `schema.sql` as the initial state. This is cleaner and avoids trying to reconstruct migration history. On existing dev databases, run with `--fake` to mark as applied. On new prod databases, run normally.
+2. **[RESOLVED] Do existing migration files (003-006) need to be converted to node-pg-migrate format?**
+   - Resolution: Option (a) — create a single `001_initial_schema.sql` baseline containing the full current schema. On existing dev databases, run with `--fake`. On new prod databases, run normally.
+   - Plan: 05-02 Task 2 creates baseline, Task 3 runs `--fake` on existing DB.
 
-3. **Does the `postgres` npm package (app-level queries) coexist correctly with `pg` (used by node-pg-migrate and Better Auth)?**
-   - What we know: Both connect via `DATABASE_URL`. `postgres` creates its own pool; `pg.Pool` creates another. Both connect to the same Postgres instance.
-   - What's unclear: Whether having two connection pools is an issue for a single-user app.
-   - Recommendation: It's fine for this scale. Each pool has max 10 connections (postgres) and default ~10 (pg). The total (20) is well within Postgres limits. Document this in case of future connection issues.
+3. **[RESOLVED] Does the `postgres` npm package (app-level queries) coexist correctly with `pg` (used by node-pg-migrate and Better Auth)?**
+   - Resolution: Both connect via `DATABASE_URL` with separate pools. For single-user app, dual pools (max ~20 connections) are well within Postgres limits. No action needed.
+   - Note: Documented in migration runner comments.
 
-4. **What should the `restart` policy be in docker-compose?**
-   - What we know: The app container runs 3 processes. If one worker crashes, should the container restart?
-   - Recommendation: Use `restart: unless-stopped` in docker-compose. This ensures the container restarts if any process crashes (the whole container dies when the entrypoint's `wait` returns). For single-user app, this is acceptable and simple.
+4. **[RESOLVED] What should the `restart` policy be in docker-compose?**
+   - Resolution: Use `restart: unless-stopped` in docker-compose. Ensures container restarts if any process crashes.
+   - Plan: 05-01 Task 3 applies `restart: unless-stopped` to the app service.
 
 ## Validation Architecture
 
