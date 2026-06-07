@@ -42,8 +42,8 @@ beforeAll(async () => {
     categoryName = categories[0].name;
   } else {
     const [category] = await sql`
-      INSERT INTO categories (name)
-      VALUES ('Test Groceries')
+      INSERT INTO categories (name, user_id)
+      VALUES ('Test Groceries', ${userId})
       RETURNING id, name
     `;
     categoryId = category.id;
@@ -56,8 +56,8 @@ beforeAll(async () => {
     accountId = accounts[0].id;
   } else {
     const [account] = await sql`
-      INSERT INTO accounts (name, type)
-      VALUES ('Test Account', 'personal')
+      INSERT INTO accounts (name, type, user_id)
+      VALUES ('Test Account', 'personal', ${userId})
       RETURNING id
     `;
     accountId = account.id;
@@ -66,10 +66,10 @@ beforeAll(async () => {
   // Clear transactions and insert some dummy transactions in the 3-month window
   await sql`TRUNCATE transactions CASCADE`;
   await sql`
-    INSERT INTO transactions (account_id, category_id, type, amount, description, date)
+    INSERT INTO transactions (account_id, category_id, type, amount, description, date, user_id)
     VALUES
-      (${accountId}, ${categoryId}, 'expense', '150.00', 'Supermarket spend', current_date - interval '10 days'),
-      (${accountId}, ${categoryId}, 'expense', '250.00', 'Grocery shopping', current_date - interval '20 days')
+      (${accountId}, ${categoryId}, 'expense', '150.00', 'Supermarket spend', current_date - interval '10 days', ${userId}),
+      (${accountId}, ${categoryId}, 'expense', '250.00', 'Grocery shopping', current_date - interval '20 days', ${userId})
   `;
 
   // Start OpenRouter mock server
@@ -99,7 +99,8 @@ beforeAll(async () => {
           );
         }
 
-        if (schemaName === 'forecast_response') {
+        // DeepSeek R1 forecast endpoint does NOT send response_format — match by model name
+        if (schemaName === 'forecast_response' || body.model?.includes('deepseek')) {
           const content = JSON.stringify({
             forecasts: [
               {
