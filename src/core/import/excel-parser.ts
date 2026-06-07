@@ -401,7 +401,7 @@ export function parseSheetTransactions(
       const description = cellToString(usableRow[2]);
       const dateCell = usableRow[3];
 
-      if (rawCategory && amount && !isHeaderValue(rawCategory)) {
+      if (rawCategory && amount && parseFloat(amount) > 0 && !isHeaderValue(rawCategory)) {
         const date = parseExcelDate(dateCell, meta);
         const category = resolveCategory(rawCategory, dbCategories);
         const routedAccount = routeAccount({ rawCategory, amount: parseFloat(amount), description });
@@ -422,7 +422,7 @@ export function parseSheetTransactions(
       // --- Incomes: Cols E-F (nazwa, kwota) ---
       const incomeName = cellToString(usableRow[4]);
       const incomeAmount = toAmountString(usableRow[5]);
-      if (incomeName && incomeAmount && !isHeaderValue(incomeName)) {
+      if (incomeName && incomeAmount && parseFloat(incomeAmount) > 0 && !isHeaderValue(incomeName)) {
         const date = sheetDefaultDate;
         results.push({
           type: 'income',
@@ -442,7 +442,7 @@ export function parseSheetTransactions(
       const rawCategory = cellToString(usableRow[0]);
       const amount = toAmountString(usableRow[1]);
 
-      if (rawCategory && amount && !isHeaderValue(rawCategory)) {
+      if (rawCategory && amount && parseFloat(amount) > 0 && !isHeaderValue(rawCategory)) {
         const date = sheetDefaultDate;
         const description: string | null = null;
         const category = resolveCategory(rawCategory, dbCategories);
@@ -464,7 +464,7 @@ export function parseSheetTransactions(
       // --- Legacy incomes ---
       const incomeName = cellToString(usableRow[legacyIncomeNameCol]);
       const incomeAmount = toAmountString(usableRow[legacyIncomeAmountCol]);
-      if (incomeName && incomeAmount && !isHeaderValue(incomeName)) {
+      if (incomeName && incomeAmount && parseFloat(incomeAmount) > 0 && !isHeaderValue(incomeName)) {
         const date = sheetDefaultDate;
         results.push({
           type: 'income',
