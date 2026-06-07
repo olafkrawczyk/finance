@@ -3,9 +3,20 @@ import { createHash } from 'crypto';
 import sql from '../src/infrastructure/db/client';
 
 let accountId: string;
+const TEST_USER_ID = 'test-user-import-dedup';
 
 beforeAll(async () => {
+  // Clean up from previous runs
   await sql`TRUNCATE transactions CASCADE`;
+  await sql`DELETE FROM "user" WHERE id = ${TEST_USER_ID}`;
+
+  // Create test user (required for FK constraint on user_id)
+  await sql`
+    INSERT INTO "user" (id, name, email, "emailVerified")
+    VALUES (${TEST_USER_ID}, 'Import Dedup Test', 'import-dedup@test.example.com', true)
+  `;
+
+  // Get or create test account
   const accounts = await sql`SELECT id FROM accounts LIMIT 1`;
   if (accounts.length === 0) {
     throw new Error('No seeded accounts found');
@@ -26,15 +37,15 @@ describe('Import Deduplication Tests', () => {
 
     // First insert
     await sql`
-      INSERT INTO transactions (account_id, type, amount, description, date, import_hash)
-      VALUES (${accountId}, 'expense', ${amount}, ${description}, ${date}, ${hash})
+      INSERT INTO transactions (account_id, type, amount, description, date, import_hash, user_id)
+      VALUES (${accountId}, 'expense', ${amount}, ${description}, ${date}, ${hash}, ${TEST_USER_ID})
     `;
 
     // Attempt second duplicate insert
     await sql`
-      INSERT INTO transactions (account_id, type, amount, description, date, import_hash)
-      VALUES (${accountId}, 'expense', ${amount}, ${description}, ${date}, ${hash})
-      ON CONFLICT (import_hash) DO NOTHING
+      INSERT INTO transactions (account_id, type, amount, description, date, import_hash, user_id)
+      VALUES (${accountId}, 'expense', ${amount}, ${description}, ${date}, ${hash}, ${TEST_USER_ID})
+      ON CONFLICT ON CONSTRAINT transactions_user_id_import_hash_key DO NOTHING
     `;
 
     // Verify only 1 row exists
