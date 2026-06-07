@@ -63,12 +63,12 @@ User-scoped data isolation — each user sees only their own accounts, categorie
 
 | REQ-ID | Phase | Verification |
 |--------|-------|-------------|
-| SCHEMA-01–11 | | |
-| SCOPE-01–07 | | |
-| WORKER-01–04 | | |
-| SEED-01–03 | | |
-| TEST-01–05 | | |
-| FRONTEND-01–03 | | |
+| SCHEMA-01–11 | Phase 6: Schema Migration & Backfill | Pending |
+| SCOPE-01–07 | Phase 7: Backend Scoping | Pending |
+| SEED-01–03 | Phase 7: Backend Scoping | Pending |
+| WORKER-01–04 | Phase 8: Worker Isolation | Pending |
+| TEST-01–05 | Phase 9: Testing & Verification | Pending |
+| FRONTEND-01–03 | Phase 10: Frontend Cache Isolation | Pending |
 
 ## Future Requirements
 
