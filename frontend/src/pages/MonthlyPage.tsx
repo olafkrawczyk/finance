@@ -201,7 +201,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Nie udało się załadować danych dla wybranego miesiąca');
+        setError(err.message || 'Failed to load data — check connection and try again.');
         setLoading(false);
       });
   }, [yearMonth]);
@@ -248,7 +248,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   if (error) {
     return (
       <div className="max-w-lg mx-auto p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
-        Nie udało się załadować danych — sprawdź połączenie i spróbuj ponownie.
+        Failed to load data — check connection and try again.
       </div>
     );
   }
