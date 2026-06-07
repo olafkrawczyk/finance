@@ -2,9 +2,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { CreateTransactionSchema, ListTransactionsQuerySchema, AssignCategorySchema, UpdateTransactionSchema } from '../../application/schemas/ledger';
-import { createTransaction, listTransactions, getMonthlySummary, getTransaction, updateTransaction, deleteTransaction } from '../../core/ledger/use-cases';
+import { createTransaction, listTransactions, getMonthlySummary, getTransaction, updateTransaction, deleteTransaction, assignCategory } from '../../core/ledger/use-cases';
 import { requireAuth } from './auth';
-import sql from '../../infrastructure/db/client';
 
 const uuidSchema = z.uuid();
 
@@ -24,8 +23,9 @@ ledgerRoutes.post(
   }),
   async (c) => {
     try {
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const tx = await createTransaction(input);
+      const tx = await createTransaction({ ...input, userId: user.id });
       return c.json({ data: tx, error: null, meta: null }, 201);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';
@@ -49,8 +49,9 @@ ledgerRoutes.get(
   }),
   async (c) => {
     try {
+      const user = c.get('user');
       const query = c.req.valid('query');
-      const { rows, total } = await listTransactions(query);
+      const { rows, total } = await listTransactions({ ...query, userId: user.id });
       return c.json(
         {
           data: rows,
@@ -69,7 +70,8 @@ ledgerRoutes.get(
 // GET /summary
 ledgerRoutes.get('/summary', requireAuth, async (c) => {
   try {
-    const rows = await getMonthlySummary();
+    const user = c.get('user');
+    const rows = await getMonthlySummary(user.id);
     return c.json(
       { data: rows, error: null, meta: { total: rows.length, page: 1, per_page: rows.length } },
       200
@@ -92,7 +94,8 @@ ledgerRoutes.get(
         return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
       }
       const id = parseResult.data;
-      const tx = await getTransaction(id);
+      const user = c.get('user');
+      const tx = await getTransaction(id, user.id);
       if (!tx) {
         return c.json({ data: null, error: { message: 'Transaction not found' }, meta: null }, 404);
       }
@@ -124,8 +127,9 @@ ledgerRoutes.put(
         return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
       }
       const id = parseResult.data;
+      const user = c.get('user');
       const input = c.req.valid('json');
-      const tx = await updateTransaction(id, input);
+      const tx = await updateTransaction(id, input, user.id);
       return c.json({ data: tx, error: null, meta: null }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';
@@ -149,7 +153,8 @@ ledgerRoutes.delete(
         return c.json({ data: null, error: { message: 'Invalid transaction id' }, meta: null }, 400);
       }
       const id = parseResult.data;
-      await deleteTransaction(id);
+      const user = c.get('user');
+      await deleteTransaction(id, user.id);
       return c.json({ data: { success: true }, error: null, meta: null }, 200);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';
@@ -181,12 +186,9 @@ ledgerRoutes.patch(
         );
       }
       const id = parseResult.data;
+      const user = c.get('user');
       const { category_id } = c.req.valid('json');
-      const [updated] = await sql`
-        UPDATE transactions SET category_id = ${category_id}
-        WHERE id = ${id} AND category_id IS NULL
-        RETURNING *
-      `;
+      const updated = await assignCategory(id, category_id, user.id);
       if (!updated) {
         return c.json(
           { data: null, error: { message: 'Transaction not found or already categorized' }, meta: null },
