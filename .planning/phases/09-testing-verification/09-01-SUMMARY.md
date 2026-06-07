@@ -97,6 +97,16 @@ None — all tests passed on first attempt (after the page 3 count fix).
 - All 39 tests in api-scoping.test.ts pass cleanly
 - No new dependencies added
 
+## Self-Check: PASSED
+
+| Check | Result |
+|-------|--------|
+| `tests/api-scoping.test.ts` exists | ✅ 682 lines |
+| All 3 test commits present | ✅ cce9099, 4943273, 7b0d410 |
+| SUMMARY.md exists | ✅ |
+| All 39 tests pass | ✅ 27 existing + 12 new |
+| No existing groups modified | ✅ Only appended Groups 6-8 |
+
 ---
 
 *Phase: 09-testing-verification*
