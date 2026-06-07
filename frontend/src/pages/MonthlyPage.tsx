@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getTransactions, getOpeningBalance, getCategories, deleteTransaction } from '../api';
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
 import MonthSidebar from '../components/MonthSidebar';
@@ -21,6 +21,67 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   const [isTruncated, setIsTruncated] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Search, sort, and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('date-desc');
+
+  // Extract all unique, non-null category_name values and sort alphabetically
+  const uniqueCategories = useMemo(() => {
+    if (!transactions) return [];
+    const categoriesSet = new Set<string>();
+    transactions.forEach((t) => {
+      if (t.category_name) {
+        categoriesSet.add(t.category_name);
+      }
+    });
+    return Array.from(categoriesSet).sort((a, b) => a.localeCompare(b));
+  }, [transactions]);
+
+  // Filter and sort transactions in memory
+  const filteredAndSortedTransactions = useMemo(() => {
+    if (!transactions) return [];
+
+    let results = transactions.filter((t) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        term === '' ||
+        (t.description?.toLowerCase().includes(term) ?? false) ||
+        (t.category_name?.toLowerCase().includes(term) ?? false);
+
+      const matchesType = selectedType === 'all' || t.type === selectedType;
+
+      const matchesCategory =
+        selectedCategory === 'all' || t.category_name === selectedCategory;
+
+      return matchesSearch && matchesType && matchesCategory;
+    });
+
+    results.sort((a, b) => {
+      if (sortBy === 'date-desc') {
+        return b.date.localeCompare(a.date);
+      }
+      if (sortBy === 'date-asc') {
+        return a.date.localeCompare(b.date);
+      }
+      if (sortBy === 'amount-desc') {
+        return b.amount - a.amount;
+      }
+      if (sortBy === 'amount-asc') {
+        return a.amount - b.amount;
+      }
+      if (sortBy === 'description-asc') {
+        const descA = a.description || '';
+        const descB = b.description || '';
+        return descA.localeCompare(descB);
+      }
+      return 0;
+    });
+
+    return results;
+  }, [transactions, searchTerm, selectedType, selectedCategory, sortBy]);
 
   // Parse YYYY-MM into year and month components
   const [yearStr, monthStr] = yearMonth.split('-');
@@ -165,7 +226,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   if (error) {
     return (
       <div className="max-w-lg mx-auto p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
-        {error}
+        Failed to load data — check connection and try again.
       </div>
     );
   }
@@ -191,6 +252,98 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
         {/* Main transaction list */}
         <div className="flex-1 w-full space-y-4">
           <h3 className="text-lg font-semibold text-slate-300 font-medium">Transakcje</h3>
+          
+          {/* Grid filter panel */}
+          {transactions && transactions.length > 0 && (
+            <div className="p-4 bg-slate-800/40 border border-slate-800 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-200">Filtruj Transakcje</span>
+                <span className="text-xs text-slate-400">
+                  Pokazuje {filteredAndSortedTransactions.length} z {transactions.length} transakcji
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Szukaj w opisie lub kategorii..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  />
+                </div>
+
+                {/* Type Select */}
+                <div>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  >
+                    <option value="all">Wszystkie typy</option>
+                    <option value="income">Przychody</option>
+                    <option value="expense">Wydatki</option>
+                    <option value="transfer">Przelewy</option>
+                  </select>
+                </div>
+
+                {/* Category Select */}
+                <div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  >
+                    <option value="all">Wszystkie kategorie</option>
+                    {uniqueCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sort Select */}
+                <div>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  >
+                    <option value="date-desc">Data: Najnowsze najpierw</option>
+                    <option value="date-asc">Data: Najstarsze najpierw</option>
+                    <option value="amount-desc">Kwota: Od najwyższej</option>
+                    <option value="amount-asc">Kwota: Od najniższej</option>
+                    <option value="description-asc">Opis: A do Z</option>
+                  </select>
+                </div>
+              </div>
+
+              {(searchTerm !== '' || selectedType !== 'all' || selectedCategory !== 'all' || sortBy !== 'date-desc') && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedType('all');
+                      setSelectedCategory('all');
+                      setSortBy('date-desc');
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors"
+                  >
+                    Wyczyść filtry
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {!hasTransactions ? (
             <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center">
               <h3 className="text-lg font-semibold text-slate-300 mb-2">No transactions for this month</h3>
@@ -198,9 +351,16 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                 Go back to the summary view or import more data.
               </p>
             </div>
+          ) : filteredAndSortedTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center">
+              <h3 className="text-lg font-semibold text-slate-300 mb-2">Brak pasujących transakcji</h3>
+              <p className="text-slate-500 text-sm">
+                Spróbuj zmienić filtry lub wyszukiwaną frazę.
+              </p>
+            </div>
           ) : (
             <TransactionTable
-              transactions={transactions}
+              transactions={filteredAndSortedTransactions}
               showCategory={true}
               onEdit={handleEdit}
               onDelete={(id) => setDeleteConfirmId(id)}

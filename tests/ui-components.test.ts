@@ -5,6 +5,7 @@ import ImportUpload from '../frontend/src/components/ImportUpload';
 import ImportStatus from '../frontend/src/components/ImportStatus';
 import InsightCard from '../frontend/src/components/InsightCard';
 import InsightsTabs from '../frontend/src/components/InsightsTabs';
+import MonthlyPage from '../frontend/src/pages/MonthlyPage';
 
 describe('UI Component Rendering Tests', () => {
   it('renders ImportUpload component without crashing', () => {
@@ -86,5 +87,14 @@ describe('UI Component Rendering Tests', () => {
       })
     );
     expect(html).toContain('Dismissed');
+  });
+
+  it('renders MonthlyPage component in loading state', () => {
+    const html = renderToString(
+      React.createElement(MonthlyPage, {
+        yearMonth: '2026-06',
+      })
+    );
+    expect(html).toContain('Loading month view...');
   });
 });
