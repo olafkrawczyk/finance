@@ -46,6 +46,7 @@ app.get('/health/db', async (c) => {
 import { importRoutes } from './src/interface-adapters/api/import';
 import { insightsRoutes } from './src/interface-adapters/api/insights';
 import { assetsRoutes } from './src/interface-adapters/api/assets';
+import { migrationRoutes } from './src/interface-adapters/api/migration';
 
 // Domain routes
 app.route('/transactions', ledgerRoutes);
@@ -53,6 +54,7 @@ app.route('/opening-balance', openingBalanceRoutes);
 app.route('/import', importRoutes);
 app.route('/insights', insightsRoutes);
 app.route('/assets', assetsRoutes);
+app.route('/api/migration', migrationRoutes);
 app.route('/', referenceRoutes);
 
 // Export for test suites

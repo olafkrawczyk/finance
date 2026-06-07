@@ -16,6 +16,11 @@ export default defineConfig({
         changeOrigin: true,
         bypass: spaBypass,
       },
+      '/api/migration': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        bypass: spaBypass,
+      },
       '/accounts': {
         target: 'http://localhost:3000',
         changeOrigin: true,

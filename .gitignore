@@ -1,5 +1,6 @@
 .env
 node_modules/
+scratch/
 better-auth_migrations/
 frontend/dist/
 package-lock.json
