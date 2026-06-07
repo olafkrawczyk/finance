@@ -46,16 +46,16 @@ export default function DestructiveConfirmModal({ isOpen, onConfirm, onClose }: 
             />
           </svg>
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold">⚠️ Permanent Data Reset</h3>
+            <h3 className="text-sm font-semibold">⚠️ Trwały reset danych</h3>
             <p className="text-sm font-normal">
-              This action is highly destructive and cannot be undone. Initiating the migration will permanently wipe all existing transactions, monthly opening balances, AI insights, and import jobs from the database. A clean initialization will then proceed using the data from the uploaded Excel workbook. Are you absolutely sure you want to proceed?
+              Ta operacja jest nieodwracalna. Rozpoczęcie migracji trwale usunie wszystkie istniejące transakcje, salda otwarcia, analizy AI oraz zadania importu z bazy danych. Następnie rozpocznie się czysty import danych z przesłanego arkusza Excel. Czy na pewno chcesz kontynuować?
             </p>
           </div>
         </div>
 
         <div className="space-y-2">
           <label htmlFor="migrate-challenge-input" className="block text-sm font-semibold text-slate-300">
-            Type 'MIGRATE' to confirm:
+            Wpisz 'MIGRATE', aby potwierdzić:
           </label>
           <input
             id="migrate-challenge-input"
@@ -73,7 +73,7 @@ export default function DestructiveConfirmModal({ isOpen, onConfirm, onClose }: 
             onClick={handleCancel}
             className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors"
           >
-            Cancel
+            Anuluj
           </button>
           <button
             onClick={handleConfirm}
@@ -82,7 +82,7 @@ export default function DestructiveConfirmModal({ isOpen, onConfirm, onClose }: 
               isConfirmEnabled ? 'hover:bg-red-700 cursor-pointer' : 'opacity-50 cursor-not-allowed'
             }`}
           >
-            Yes, Wipe Data and Migrate
+            Tak, wyczyść dane i migruj
           </button>
         </div>
       </div>

@@ -36,7 +36,7 @@ export default function TransactionTable({
   if (!transactions || transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center">
-        <h3 className="text-lg font-semibold text-slate-300 mb-2">No transactions found</h3>
+        <h3 className="text-lg font-semibold text-slate-300 mb-2">Nie znaleziono transakcji</h3>
       </div>
     );
   }

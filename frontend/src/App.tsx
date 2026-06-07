@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ImportUpload from './components/ImportUpload';
 import ImportStatus from './components/ImportStatus';
 import DashboardPage from './pages/DashboardPage';
-import ZbiorczyPage from './pages/ZbiorczyPage';
+import SummaryPage from './pages/SummaryPage';
 import MonthlyPage from './pages/MonthlyPage';
 import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
@@ -46,8 +46,8 @@ export default function App() {
       return <AssetsPage />;
     }
 
-    if (currentPath === '/zbiorczy') {
-      return <ZbiorczyPage />;
+    if (currentPath === '/summary') {
+      return <SummaryPage />;
     }
 
     if (currentPath.startsWith('/month/')) {
@@ -100,12 +100,12 @@ export default function App() {
 
     return (
       <div className="text-center p-8">
-        <h2 className="text-2xl font-bold text-red-500">404 - Page Not Found</h2>
+        <h2 className="text-2xl font-bold text-red-500">404 - Nie znaleziono strony</h2>
         <button
           onClick={() => navigateTo('/dashboard')}
           className="mt-4 px-6 py-2 bg-blue-600 rounded-lg text-white font-medium"
         >
-          Go to Dashboard
+          Przejdź do Dashboardu
         </button>
       </div>
     );
@@ -166,9 +166,9 @@ export default function App() {
                 Aktywa
               </button>
               <button
-                onClick={() => navigateTo('/zbiorczy')}
+                onClick={() => navigateTo('/summary')}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  currentPath.startsWith('/zbiorczy')
+                  currentPath.startsWith('/summary')
                     ? 'bg-slate-900 text-blue-400'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -213,7 +213,7 @@ export default function App() {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Insights
+                Analizy
               </button>
             </nav>
             {/* User info + logout */}
@@ -239,7 +239,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900/40 py-6 text-center text-xs text-slate-600">
-        <p>&copy; {new Date().getFullYear()} FinanceFlow. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} FinanceFlow. Wszelkie prawa zastrzeżone.</p>
       </footer>
     </div>
   );

@@ -201,7 +201,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load month data');
+        setError(err.message || 'Nie udało się załadować danych dla wybranego miesiąca');
         setLoading(false);
       });
   }, [yearMonth]);
@@ -240,7 +240,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm">Loading month view...</p>
+        <p className="text-slate-400 mt-4 text-sm">Ładowanie szczegółów miesiąca...</p>
       </div>
     );
   }
@@ -248,7 +248,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
   if (error) {
     return (
       <div className="max-w-lg mx-auto p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
-        Failed to load data — check connection and try again.
+        Nie udało się załadować danych — sprawdź połączenie i spróbuj ponownie.
       </div>
     );
   }
@@ -266,7 +266,7 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
 
       {isTruncated && (
         <div className="p-4 bg-yellow-950/50 border border-yellow-800 rounded-lg text-yellow-300 text-sm">
-          Warning: This month has more than 500 transactions. Only the first 500 are shown.
+          Ostrzeżenie: Ten miesiąc zawiera ponad 500 transakcji. Wyświetlono tylko pierwsze 500.
         </div>
       )}
 
@@ -367,9 +367,9 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
 
           {!hasTransactions ? (
             <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center">
-              <h3 className="text-lg font-semibold text-slate-300 mb-2">No transactions for this month</h3>
+              <h3 className="text-lg font-semibold text-slate-300 mb-2">Brak transakcji w tym miesiącu</h3>
               <p className="text-slate-500 text-sm">
-                Go back to the summary view or import more data.
+                Wróć do widoku zbiorczego lub zaimportuj nowe dane.
               </p>
             </div>
           ) : filteredAndSortedTransactions.length === 0 ? (

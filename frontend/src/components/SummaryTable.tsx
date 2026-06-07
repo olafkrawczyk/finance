@@ -2,15 +2,15 @@ import React from 'react';
 
 export interface NormalizedSummaryRow {
   month: string;
-  wydatki: number;
-  przychody: number;
-  stan_konta: number | null;
-  wydatki_bez_stalych: number;
-  zaoszczedzone: number;
-  zaoszczedzone_log: number;
+  expenses: number;
+  income: number;
+  balance: number | null;
+  expensesWithoutFixed: number;
+  savings: number;
+  savingsLog: number;
 }
 
-interface ZbiorczyTableProps {
+interface SummaryTableProps {
   rows: NormalizedSummaryRow[];
   onRowClick?: (month: string) => void;
 }
@@ -18,13 +18,13 @@ interface ZbiorczyTableProps {
 const fmt = (n: number): string =>
   new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
-export default function ZbiorczyTable({ rows, onRowClick }: ZbiorczyTableProps) {
+export default function SummaryTable({ rows, onRowClick }: SummaryTableProps) {
   if (!rows || rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center">
-        <h3 className="text-lg font-semibold text-slate-300 mb-2">No transaction data yet</h3>
+        <h3 className="text-lg font-semibold text-slate-300 mb-2">Brak danych o transakcjach</h3>
         <p className="text-slate-500 text-sm max-w-sm">
-          Import a CSV bank statement to see your monthly summary.
+          Zaimportuj wyciąg bankowy CSV, aby zobaczyć podsumowanie miesięczne.
         </p>
       </div>
     );
@@ -57,22 +57,22 @@ export default function ZbiorczyTable({ rows, onRowClick }: ZbiorczyTableProps) 
                 {row.month}
               </td>
               <td className="px-6 py-4 text-right text-red-400 font-mono">
-                {fmt(row.wydatki)}
+                {fmt(row.expenses)}
               </td>
               <td className="px-6 py-4 text-right text-green-400 font-mono">
-                {fmt(row.przychody)}
+                {fmt(row.income)}
               </td>
               <td className="px-6 py-4 text-right text-blue-400 font-mono">
-                {row.stan_konta !== null ? fmt(row.stan_konta) : '—'}
+                {row.balance !== null ? fmt(row.balance) : '—'}
               </td>
               <td className="px-6 py-4 text-right font-mono">
-                {fmt(row.wydatki_bez_stalych)}
+                {fmt(row.expensesWithoutFixed)}
               </td>
               <td className="px-6 py-4 text-right font-mono">
-                {fmt(row.zaoszczedzone)}
+                {fmt(row.savings)}
               </td>
               <td className="px-6 py-4 text-right text-slate-400 font-mono">
-                {isNaN(row.zaoszczedzone_log) ? '—' : row.zaoszczedzone_log.toFixed(2)}
+                {isNaN(row.savingsLog) ? '—' : row.savingsLog.toFixed(2)}
               </td>
             </tr>
           ))}

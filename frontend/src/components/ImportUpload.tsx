@@ -31,7 +31,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
         }
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load accounts');
+        setError(err.message || 'Nie udało się załadować kont');
       });
   }, []);
 
@@ -48,12 +48,12 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
   const validateAndSetFile = (selectedFile: File) => {
     setError(null);
     if (!selectedFile.name.endsWith('.csv')) {
-      setError('Invalid file type: Only CSV files are accepted.');
+      setError('Nieprawidłowy typ pliku: Akceptowane są tylko pliki CSV.');
       setFile(null);
       return;
     }
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError('File is too large: Maximum size is 10MB.');
+      setError('Plik jest zbyt duży: Maksymalny rozmiar to 10MB.');
       setFile(null);
       return;
     }
@@ -83,7 +83,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
       const data = await startImport(file, selectedAccount, bankFormat);
       onImportStarted(data.job_id);
     } catch (err: any) {
-      setError(err.message || 'Upload failed');
+      setError(err.message || 'Przesyłanie nie powiodło się');
     } finally {
       setIsUploading(false);
     }
@@ -93,10 +93,10 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
         <h2 className="text-3xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
-          Import Transactions
+          Importuj transakcje
         </h2>
         <p className="text-slate-400 mt-2 text-sm">
-          Upload your bank CSV statement to parse and ingest transactions.
+          Prześlij wyciąg bankowy CSV, aby przetworzyć i zaimportować transakcje.
         </p>
       </div>
 
@@ -110,7 +110,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
         {/* Account Select */}
         <div>
           <label htmlFor="account-select" className="block text-slate-300 text-sm font-semibold mb-2">
-            Select Account
+            Wybierz konto
           </label>
           <select
             id="account-select"
@@ -129,7 +129,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
         {/* Bank Format Select */}
         <div>
           <label htmlFor="format-select" className="block text-slate-300 text-sm font-semibold mb-2">
-            Bank Statement Format
+            Format wyciągu bankowego
           </label>
           <select
             id="format-select"
@@ -145,7 +145,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
         {/* File Dropzone */}
         <div>
           <label className="block text-slate-300 text-sm font-semibold mb-2">
-            Upload CSV File
+            Prześlij plik CSV
           </label>
           <div
             onDragEnter={handleDrag}
@@ -192,8 +192,8 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-slate-300">Drag & drop your CSV file here, or click to browse</p>
-                <p className="text-slate-500 text-xs mt-2">Only .csv statement files up to 10MB</p>
+                <p className="text-slate-300">Przeciągnij i upuść plik CSV tutaj lub kliknij, aby wybrać</p>
+                <p className="text-slate-500 text-xs mt-2">Tylko pliki wyciągów .csv do 10MB</p>
               </div>
             )}
           </div>
@@ -234,7 +234,7 @@ export default function ImportUpload({ onImportStarted }: ImportUploadProps) {
               Uploading File...
             </span>
           ) : (
-            'Upload Statement'
+            'Prześlij wyciąg'
           )}
         </button>
       </div>

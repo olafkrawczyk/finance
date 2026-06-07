@@ -11,7 +11,7 @@ import {
 
 interface SavingsDataPoint {
   month: string;
-  zaoszczedzone: number;
+  savings: number;
 }
 
 interface SavingsChartProps {
@@ -34,7 +34,7 @@ export default function SavingsChart({ data, onMonthClick }: SavingsChartProps) 
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
-        Not enough data to display chart
+        Brak wystarczającej ilości danych do wyświetlenia wykresu
       </div>
     );
   }
@@ -61,7 +61,7 @@ export default function SavingsChart({ data, onMonthClick }: SavingsChartProps) 
           }}
           formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
         />
-        <Bar dataKey="zaoszczedzone" fill="#22c55e" name="Zaoszczędzone" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="savings" fill="#22c55e" name="Zaoszczędzone" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

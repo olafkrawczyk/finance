@@ -27,7 +27,7 @@ export default function InsightsWidget() {
       })
       .catch((err) => {
         console.error('Failed to fetch latest insights for widget:', err);
-        setError(err.message || 'Failed to load insights');
+        setError(err.message || 'Nie udało się załadować analiz');
         setLoading(false);
       });
   };

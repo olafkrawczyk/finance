@@ -37,7 +37,7 @@ export default function MonthSidebar({
   if (!hasData) {
     return (
       <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-sm">
-        No data for this month
+        Brak danych dla tego miesiąca
       </div>
     );
   }

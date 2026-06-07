@@ -45,12 +45,12 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
   const validateAndSetFile = (selectedFile: File) => {
     setFileError(null);
     if (!selectedFile.name.toLowerCase().endsWith('.xlsx')) {
-      setFileError('Only .xlsx Excel workbooks are supported');
+      setFileError('Obsługiwane są tylko skoroszyty Excel .xlsx');
       setFile(null);
       return;
     }
     if (selectedFile.size >= MAX_FILE_SIZE_BYTES) {
-      setFileError('Only .xlsx Excel workbooks are supported');
+      setFileError('Obsługiwane są tylko skoroszyty Excel .xlsx');
       setFile(null);
       return;
     }
@@ -115,7 +115,7 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
         })
         .catch((err: any) => {
           stopPolling();
-          setErrorMessage(err.message || 'Failed to poll migration status');
+          setErrorMessage(err.message || 'Nie udało się pobrać statusu migracji');
           setPageState('failed');
         });
     };
@@ -139,7 +139,7 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
       const data = await startExcelMigration(file);
       pollStatus(data.job_id);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to start migration');
+      setErrorMessage(err.message || 'Nie udało się rozpocząć migracji');
       setPageState('failed');
     }
   };
@@ -170,8 +170,8 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
     const processed = job?.processed || 0;
     const percent = total > 0 ? (processed / total) * 100 : 0;
     const details = total > 0
-      ? `Processing row ${processed} of ${total}`
-      : 'Preparing workbook...';
+      ? `Przetwarzanie wiersza ${processed} z ${total}`
+      : 'Przygotowywanie skoroszytu...';
 
     return (
       <div className="bg-slate-950 text-slate-100 min-h-screen p-8 flex flex-col items-center justify-center">
@@ -190,9 +190,9 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
             />
           </svg>
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-slate-100">Ingesting Excel Data...</h2>
+            <h2 className="text-2xl font-semibold text-slate-100">Trwa importowanie danych z Excela...</h2>
             <p className="text-sm font-normal text-slate-400">
-              Please keep this tab open and do not navigate away. This may take up to a minute.
+              Proszę trzymać tę kartę otwartą i nie opuszczać strony. Może to zająć do minuty.
             </p>
           </div>
           <ProgressBar percent={percent} details={details} />
@@ -216,15 +216,15 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
-          <h2 className="text-2xl font-semibold text-slate-100">Migration Completed</h2>
+          <h2 className="text-2xl font-semibold text-slate-100">Migracja zakończona</h2>
           <p className="text-sm font-normal text-slate-400">
-            All historical sheets have been processed successfully. Existing data was wiped and replaced with historical ledger records from budget.xlsx.
+            Wszystkie arkusze historyczne zostały pomyślnie przetworzone. Istniejące dane zostały wyczyszczone i zastąpione historycznymi wpisami z pliku budget.xlsx.
           </p>
           <button
             onClick={handleGoToDashboard}
             className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all"
           >
-            Go to Dashboard
+            Przejdź do Dashboardu
           </button>
         </div>
       </div>
@@ -246,15 +246,15 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
           </svg>
-          <h2 className="text-2xl font-semibold text-slate-100">Migration Failed</h2>
+          <h2 className="text-2xl font-semibold text-slate-100">Migracja nie powiodła się</h2>
           <p className="text-sm font-normal text-slate-400">
-            An error occurred during spreadsheet processing. Database transaction has been rolled back. Error: {errorMessage || 'Unknown error'}
+            Wystąpił błąd podczas przetwarzania arkusza. Transakcja bazy danych została wycofana. Błąd: {errorMessage || 'Nieznany błąd'}
           </p>
           <button
             onClick={handleTryAgain}
             className="w-full py-3 px-6 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all"
           >
-            Try Again
+            Spróbuj ponownie
           </button>
         </div>
       </div>
@@ -266,9 +266,9 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
     <div className="bg-slate-950 text-slate-100 min-h-screen p-8 flex flex-col items-center justify-center">
       <div className="max-w-xl w-full flex flex-col items-center gap-6">
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-100">Excel Data Migration</h1>
+          <h1 className="text-2xl font-semibold text-slate-100">Migracja danych z pliku Excel</h1>
           <p className="text-sm font-normal text-slate-400">
-            Drag and drop budget.xlsx here, or click to browse
+            Przeciągnij i upuść budget.xlsx tutaj lub kliknij, aby wybrać z dysku
           </p>
         </div>
 
@@ -335,10 +335,10 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
           ) : (
             <div className="text-center space-y-1">
               <p className="text-sm font-normal text-slate-300">
-                Drag and drop budget.xlsx here, or click to browse
+                Przeciągnij i upuść budget.xlsx tutaj lub kliknij, aby wybrać z dysku
               </p>
               <p className="text-sm font-normal text-slate-500">
-                Only .xlsx spreadsheets are accepted. Max size: 20MB.
+                Akceptowane są tylko arkusze .xlsx. Maksymalny rozmiar: 20MB.
               </p>
             </div>
           )}
@@ -359,7 +359,7 @@ export default function MigrationPage({ onMigrationComplete }: MigrationPageProp
               : 'bg-gradient-to-r from-blue-600 to-indigo-600 opacity-50 cursor-not-allowed'
           }`}
         >
-          Start Ingestion
+          Rozpocznij import
         </button>
       </div>
 

@@ -13,9 +13,9 @@ import {
 
 interface ComboDataPoint {
   month: string;
-  wydatki: number;
-  przychody: number;
-  stan_konta: number | null;
+  expenses: number;
+  income: number;
+  balance: number | null;
 }
 
 interface PredictionPoint {
@@ -45,7 +45,7 @@ export default function ComboChart({ data, prediction, aiForecast, onMonthClick 
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[350px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
-        Not enough data to display chart
+        Brak wystarczającej ilości danych do wyświetlenia wykresu
       </div>
     );
   }
@@ -66,9 +66,9 @@ export default function ComboChart({ data, prediction, aiForecast, onMonthClick 
     const nextLabel = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
     mergedData.push({
       month: nextLabel,
-      wydatki: 0,
-      przychody: 0,
-      stan_konta: null,
+      expenses: 0,
+      income: 0,
+      balance: null,
       prediction: null,
       aiForecast: nextMonthForecast.value,
     } as any);
@@ -101,9 +101,9 @@ export default function ComboChart({ data, prediction, aiForecast, onMonthClick 
             paddingTop: '10px',
           }}
         />
-        <Bar dataKey="wydatki" fill="#ef4444" name="Wydatki" radius={[4, 4, 0, 0]} />
-        <Line type="monotone" dataKey="przychody" stroke="#22c55e" strokeWidth={2} name="Przychody" />
-        <Line type="monotone" dataKey="stan_konta" stroke="#3b82f6" strokeWidth={2} name="Stan konta" />
+        <Bar dataKey="expenses" fill="#ef4444" name="Wydatki" radius={[4, 4, 0, 0]} />
+        <Line type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} name="Przychody" />
+        <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2} name="Stan konta" />
         <Line
           type="monotone"
           dataKey="prediction"

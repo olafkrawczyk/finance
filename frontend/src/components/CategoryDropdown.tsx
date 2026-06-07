@@ -40,12 +40,12 @@ export default function CategoryDropdown({
       >
         {categories.length === 0 ? (
           <option value="" disabled>
-            Loading categories...
+            Ładowanie kategorii...
           </option>
         ) : (
           <>
             {includeUncategorized && (
-              <option value="">— (uncategorized)</option>
+              <option value="">— (nieskategoryzowane)</option>
             )}
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>

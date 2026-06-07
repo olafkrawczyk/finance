@@ -42,7 +42,7 @@ export default function AssetsPage() {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load assets');
+        setError(err.message || 'Nie udało się załadować aktywów');
         setLoading(false);
       });
   };

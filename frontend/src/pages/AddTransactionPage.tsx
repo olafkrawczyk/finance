@@ -37,7 +37,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         }
       })
       .catch((err) => {
-        setError(err.message || 'Failed to initialize categories or accounts');
+        setError(err.message || 'Nie udało się załadować kategorii lub kont');
       });
   }, []);
 
@@ -57,7 +57,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load transaction');
+        setError(err.message || 'Nie udało się wczytać transakcji');
         setLoading(false);
       });
   }, [transactionId]);
@@ -66,19 +66,19 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
     e.preventDefault();
     const defaultAccountId = accounts[0]?.id;
     if (!defaultAccountId) {
-      setError('No accounts available to assign transaction to.');
+      setError('Brak dostępnych kont do przypisania transakcji.');
       return;
     }
     if (!categoryId) {
-      setError('Please select a category.');
+      setError('Proszę wybrać kategorię.');
       return;
     }
     if (!amount || parseFloat(amount) <= 0) {
-      setError('Please enter an amount greater than 0.');
+      setError('Proszę wpisać kwotę większą niż 0.');
       return;
     }
     if (!date) {
-      setError('Please select a date.');
+      setError('Proszę wybrać datę.');
       return;
     }
 
@@ -118,7 +118,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         onSuccess();
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to add transaction');
+      setError(err.message || 'Nie udało się zapisać transakcji');
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +130,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm ml-3">Loading transaction...</p>
+        <p className="text-slate-400 mt-4 text-sm ml-3">Ładowanie transakcji...</p>
       </div>
     );
   }
@@ -138,8 +138,8 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
   return (
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-semibold text-slate-100 font-medium">{transactionId ? 'Edytuj transakcję' : 'Dodaj'}</h2>
-        <p className="text-slate-400 mt-2 text-sm">New Transaction</p>
+        <h2 className="text-2xl font-semibold text-slate-100 font-medium">{transactionId ? 'Edytuj transakcję' : 'Dodaj transakcję'}</h2>
+        <p className="text-slate-400 mt-2 text-sm">{transactionId ? 'Edycja' : 'Nowa transakcja'}</p>
       </div>
 
       {error && (
@@ -150,7 +150,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
 
       {success && (
         <div className="mb-6 p-4 bg-green-950/50 border border-green-800 rounded-lg text-green-300 text-sm">
-          {transactionId ? 'Transaction updated successfully!' : 'Transaction added successfully!'}
+          {transactionId ? 'Transakcja zaktualizowana pomyślnie!' : 'Transakcja dodana pomyślnie!'}
         </div>
       )}
 
@@ -264,10 +264,10 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Adding Transaction...
+              Zapisywanie...
             </span>
           ) : (
-            transactionId ? 'Save Changes' : 'Add Transaction'
+            transactionId ? 'Zapisz zmiany' : 'Dodaj transakcję'
           )}
         </button>
       </form>

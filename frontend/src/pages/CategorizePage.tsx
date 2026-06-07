@@ -43,7 +43,7 @@ export default function CategorizePage() {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load uncategorized transactions');
+        setError(err.message || 'Nie udało się załadować nieskategoryzowanych transakcji');
         setLoading(false);
       });
   };
@@ -84,13 +84,13 @@ export default function CategorizePage() {
     const ids = Array.from(selectedIds);
     try {
       await Promise.all(ids.map((id) => assignCategory(id, targetCategory)));
-      setSuccess('Categories saved');
+      setSuccess('Kategorie zostały pomyślnie zapisane');
       
       // Remove successfully categorized transactions from state
       setTransactions((prev) => prev.filter((t) => !selectedIds.has(t.id)));
       setSelectedIds(new Set());
     } catch (err: any) {
-      setError(err.message || 'Could not save categories');
+      setError(err.message || 'Nie udało się zapisać kategorii');
     } finally {
       setAssigning(false);
     }
@@ -100,7 +100,7 @@ export default function CategorizePage() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm font-medium">Loading transactions...</p>
+        <p className="text-slate-400 mt-4 text-sm font-medium">Ładowanie transakcji...</p>
       </div>
     );
   }
@@ -111,7 +111,7 @@ export default function CategorizePage() {
     <div className="space-y-6 max-w-6xl mx-auto w-full px-4">
       <div>
         <h2 className="text-2xl font-semibold text-slate-100 font-medium">Kategoryzuj</h2>
-        <p className="text-slate-400 text-sm">Assign categories to imported transactions</p>
+        <p className="text-slate-400 text-sm">Przypisz kategorie do zaimportowanych transakcji</p>
       </div>
 
       {error && (
@@ -128,9 +128,9 @@ export default function CategorizePage() {
 
       {!hasUncategorized ? (
         <div className="flex flex-col items-center justify-center p-12 bg-slate-900/40 backdrop-blur-xl border border-slate-800 rounded-2xl text-center max-w-lg mx-auto space-y-3">
-          <h3 className="text-xl font-semibold text-slate-200">All caught up!</h3>
+          <h3 className="text-xl font-semibold text-slate-200">Wszystko zrobione!</h3>
           <p className="text-slate-400 text-sm">
-            Every imported transaction has a category assigned.
+            Każda zaimportowana transakcja ma przypisaną kategorię.
           </p>
         </div>
       ) : (
@@ -141,7 +141,7 @@ export default function CategorizePage() {
                 categories={categories}
                 value={targetCategory}
                 onChange={setTargetCategory}
-                label="Assign to category"
+                label="Przypisz do kategorii"
                 includeUncategorized={false}
               />
             </div>
@@ -177,10 +177,10 @@ export default function CategorizePage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Saving categories...
+                  Zapisywanie kategorii...
                 </span>
               ) : (
-                `Save Categories (${selectedIds.size})`
+                `Zapisz kategorie (${selectedIds.size})`
               )}
             </button>
           </div>
@@ -188,7 +188,7 @@ export default function CategorizePage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center px-1">
               <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                Uncategorized Transactions ({transactions.length})
+                Nieskategoryzowane transakcje ({transactions.length})
               </span>
             </div>
             <TransactionTable

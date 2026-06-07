@@ -31,7 +31,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
     const fetchStatus = () => {
       // Check timeout
       if (Date.now() - startTime > TIMEOUT_MS) {
-        setError('Polling timed out: Ingestion took longer than 5 minutes.');
+        setError('Przekroczono limit czasu: Import trwał dłużej niż 5 minut.');
         clearInterval(intervalId);
         return;
       }
@@ -44,7 +44,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
           }
         })
         .catch((err) => {
-          setError(err.message || 'Failed to poll job status');
+          setError(err.message || 'Nie udało się pobrać statusu zadania');
           clearInterval(intervalId);
         });
     };
@@ -69,7 +69,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
           onClick={onBack}
           className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold transition-colors"
         >
-          Back to Imports
+          Powrót do importów
         </button>
       </div>
     );
@@ -79,7 +79,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
     return (
       <div className="max-w-lg w-full mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm">Loading job status...</p>
+        <p className="text-slate-400 mt-4 text-sm">Ładowanie statusu zadania...</p>
       </div>
     );
   }
@@ -91,24 +91,24 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
   // Status mapping
   const statusConfig = {
     pending: {
-      text: 'Pending',
+      text: 'Oczekujące',
       bgClass: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-      description: 'Job enqueued. Waiting for worker to start...',
+      description: 'Zadanie w kolejce. Oczekiwanie na rozpoczęcie...',
     },
     processing: {
-      text: 'Processing',
+      text: 'Przetwarzanie',
       bgClass: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-      description: 'AI model is parsing statements and inserting transactions...',
+      description: 'Model AI przetwarza wyciągi i wprowadza transakcje...',
     },
     completed: {
-      text: 'Completed',
+      text: 'Zakończono',
       bgClass: 'bg-green-500/10 border-green-500/20 text-green-400',
-      description: 'Ingestion finished successfully!',
+      description: 'Import zakończony pomyślnie!',
     },
     failed: {
-      text: 'Failed',
+      text: 'Niepowodzenie',
       bgClass: 'bg-red-500/10 border-red-500/20 text-red-400',
-      description: 'Ingestion failed. See details below.',
+      description: 'Import nie powiódł się. Zobacz szczegóły poniżej.',
     },
   };
 
@@ -123,7 +123,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
   return (
     <div className="max-w-lg w-full mx-auto bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl p-8 transition-all duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-semibold text-slate-100">Import Status</h2>
+        <h2 className="text-3xl font-semibold text-slate-100">Status importu</h2>
         <p className="text-slate-400 mt-1 text-xs font-mono select-all">Job ID: {jobId}</p>
       </div>
 
@@ -146,7 +146,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
         {job.status !== 'pending' && (
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">Ingestion Progress</span>
+              <span className="text-slate-400">Postęp importu</span>
               <span className="text-slate-200 font-bold">{percent}%</span>
             </div>
             {/* Progress Bar Container */}
@@ -161,8 +161,8 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
               />
             </div>
             <div className="flex justify-between items-center text-xs text-slate-500 mt-1">
-              <span>Processed: {processed} rows</span>
-              <span>Total: {total} rows</span>
+              <span>Przetworzono: {processed} wierszy</span>
+              <span>Razem: {total} wierszy</span>
             </div>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
               onClick={() => setIsErrorsExpanded(!isErrorsExpanded)}
               className="w-full px-4 py-3 flex justify-between items-center text-sm font-semibold text-red-300 hover:bg-red-950/20 transition-colors"
             >
-              <span>Ingestion Errors ({jobErrors.length})</span>
+              <span>Błędy importu ({jobErrors.length})</span>
               <svg
                 className={`w-4 h-4 transition-transform duration-300 ${isErrorsExpanded ? 'rotate-180' : ''}`}
                 fill="none"
@@ -204,14 +204,14 @@ export default function ImportStatus({ jobId, onBack, onCategorize }: ImportStat
             onClick={onCategorize}
             className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition-all duration-300 active:scale-95 shadow-lg mb-3"
           >
-            Categorize Transactions
+            Kategoryzuj transakcje
           </button>
         )}
         <button
           onClick={onBack}
           className="w-full py-4 px-6 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-200 rounded-xl font-bold transition-all duration-300 active:scale-95 shadow-sm"
         >
-          Back to Imports
+          Powrót do importów
         </button>
       </div>
     </div>

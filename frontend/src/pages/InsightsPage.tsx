@@ -47,7 +47,7 @@ export default function InsightsPage() {
       })
       .catch((err) => {
         console.error('Failed to load insights:', err);
-        setError(err.message || 'Failed to load insights');
+        setError(err.message || 'Nie udało się załadować analiz');
         setLoading(false);
       });
   };
@@ -100,7 +100,7 @@ export default function InsightsPage() {
       })
       .catch((err) => {
         console.error('Failed to dismiss insight:', err);
-        alert('Failed to dismiss insight');
+        alert('Nie udało się odrzucić wskazówki');
         setDismissTarget(null);
       });
   };
@@ -111,7 +111,7 @@ export default function InsightsPage() {
     setSuccessMsg(null);
     generateInsights()
       .then(() => {
-        setSuccessMsg('Request submitted. Analyzing your finances...');
+        setSuccessMsg('Zgłoszenie wysłane. Analizowanie Twoich finansów...');
         setTimeout(() => {
           setGenerating(false);
           setSuccessMsg(null);
@@ -122,7 +122,7 @@ export default function InsightsPage() {
       })
       .catch((err) => {
         console.error('Failed to generate insights:', err);
-        setError('Failed to generate insights. Please try again or check back later.');
+        setError('Nie udało się wygenerować wskazówek. Spróbuj ponownie później.');
         setGenerating(false);
       });
   };
@@ -133,8 +133,8 @@ export default function InsightsPage() {
     <div className="max-w-6xl mx-auto space-y-6 w-full px-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-100">Insights</h2>
-          <p className="text-slate-400 text-sm">AI-powered financial analysis</p>
+          <h2 className="text-2xl font-semibold text-slate-100">Analizy</h2>
+          <p className="text-slate-400 text-sm">Analiza finansowa wspierana przez AI</p>
         </div>
 
         <div>
@@ -153,10 +153,10 @@ export default function InsightsPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Analyzing your finances...
+                Analizowanie Twoich finansów...
               </>
             ) : (
-              'Generate Insights'
+              'Generuj analizy'
             )}
           </button>
         </div>
@@ -179,20 +179,20 @@ export default function InsightsPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
-          <p className="text-slate-400 mt-4 text-sm">Loading insights...</p>
+          <p className="text-slate-400 mt-4 text-sm">Ładowanie analiz...</p>
         </div>
       ) : insights.length === 0 ? (
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center max-w-lg mx-auto">
-          <h3 className="text-lg font-semibold text-slate-300">No Insights Yet</h3>
+          <h3 className="text-lg font-semibold text-slate-300">Brak analiz</h3>
           <p className="text-slate-500 text-sm mt-2">
-            Financial insights are generated nightly from your transaction data. Import transactions to get started, or generate insights now.
+            Analizy finansowe są generowane automatycznie w nocy na podstawie historii transakcji. Zaimportuj transakcje, aby rozpocząć, lub wygeneruj analizy teraz.
           </p>
           <button
             onClick={handleGenerate}
             disabled={generating}
             className="mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl px-6 py-3 transition-colors shadow-lg cursor-pointer"
           >
-            Generate Insights
+            Generuj analizy
           </button>
         </div>
       ) : (
@@ -214,17 +214,17 @@ export default function InsightsPage() {
                 disabled={page === 1}
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Previous
+                Poprzednia
               </button>
               <span className="text-sm text-slate-400">
-                Page {page} of {totalPages}
+                Strona {page} z {totalPages}
               </span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                Next
+                Następna
               </button>
             </div>
           )}

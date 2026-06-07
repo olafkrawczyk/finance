@@ -54,21 +54,21 @@ export default function InsightCard({ insight, onDismiss }: InsightCardProps) {
               onClick={handleEvidenceClick}
               className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer transition-colors font-medium"
             >
-              See related transactions
+              Zobacz powiązane transakcje
             </a>
           )}
         </div>
         
         {dismissed ? (
           <span className="text-xs font-semibold text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
-            Dismissed
+            Odrzucono
           </span>
         ) : (
           <button
             onClick={() => onDismiss(id)}
             className="text-xs text-slate-500 hover:text-red-400 transition-colors font-medium cursor-pointer"
           >
-            Dismiss
+            Odrzuć
           </button>
         )}
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getMonthlySummary, getInsightsForecast, getAssets } from '../api';
 import { linearRegression } from '../lib/linearRegression';
-import { NormalizedSummaryRow } from '../components/ZbiorczyTable';
+import { NormalizedSummaryRow } from '../components/SummaryTable';
 import BalanceChart from '../charts/BalanceChart';
 import ComboChart from '../charts/ComboChart';
 import SavingsChart from '../charts/SavingsChart';
@@ -25,18 +25,18 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
       .then((rows) => {
         const normalized = rows.map((r: any) => ({
           month: r.month,
-          wydatki: parseFloat(r.wydatki),
-          przychody: parseFloat(r.przychody),
-          stan_konta: r.stan_konta != null ? parseFloat(r.stan_konta) : null,
-          wydatki_bez_stalych: parseFloat(r.wydatki_bez_stalych),
-          zaoszczedzone: parseFloat(r.zaoszczedzone),
-          zaoszczedzone_log: parseFloat(r.zaoszczedzone_log),
+          expenses: parseFloat(r.wydatki),
+          income: parseFloat(r.przychody),
+          balance: r.stan_konta != null ? parseFloat(r.stan_konta) : null,
+          expensesWithoutFixed: parseFloat(r.wydatki_bez_stalych),
+          savings: parseFloat(r.zaoszczedzone),
+          savingsLog: parseFloat(r.zaoszczedzone_log),
         })).reverse();
         setData(normalized);
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Failed to load summary data');
+        setError(err.message || 'Nie udało się wczytać podsumowania');
         setLoading(false);
       });
   }, []);
@@ -75,7 +75,7 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
 
   const totalBankBalance = useMemo(() => {
     if (!data) return 0;
-    return data.reduce((sum, r) => sum + r.zaoszczedzone, 0);
+    return data.reduce((sum, r) => sum + r.savings, 0);
   }, [data]);
 
   const totalNetWorth = totalBankBalance + totalNetValue;
@@ -116,18 +116,18 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
         }
 
         const lastPoint = data[data.length - 1];
-        if (lastPoint.stan_konta === null) {
+        if (lastPoint.balance === null) {
           setAiForecast(null);
           return;
         }
 
         // Estimate income as average of last 3 months
-        const avgIncome = data.slice(-3).reduce((sum, d) => sum + d.przychody, 0) / Math.min(3, data.length);
-        const projectedBalance = lastPoint.stan_konta + avgIncome - totalForecastSpend;
+        const avgIncome = data.slice(-3).reduce((sum, d) => sum + d.income, 0) / Math.min(3, data.length);
+        const projectedBalance = lastPoint.balance + avgIncome - totalForecastSpend;
 
         // Two points: anchor at last known balance, then projected next month
         setAiForecast([
-          { monthIndex: data.length - 1, value: lastPoint.stan_konta },
+          { monthIndex: data.length - 1, value: lastPoint.balance },
           { monthIndex: data.length, value: projectedBalance },
         ]);
       })
@@ -140,9 +140,9 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
   const predictionData = useMemo(() => {
     if (!data) return [];
     
-    // Map index to stan_konta for regression
+    // Map index to balance for regression
     const points = data
-      .map((d, index) => ({ x: index, y: d.stan_konta }))
+      .map((d, index) => ({ x: index, y: d.balance }))
       .filter((p): p is { x: number; y: number } => p.y !== null);
 
     if (points.length < 2) return [];
@@ -159,7 +159,7 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm">Loading dashboard...</p>
+        <p className="text-slate-400 mt-4 text-sm">Ładowanie dashboardu...</p>
       </div>
     );
   }
@@ -175,9 +175,9 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
   if (!data || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-900/50 border border-slate-800 rounded-xl text-center max-w-lg mx-auto">
-        <h3 className="text-lg font-semibold text-slate-300 mb-2">No data to chart</h3>
+        <h3 className="text-lg font-semibold text-slate-300 mb-2">Brak danych do wykresu</h3>
         <p className="text-slate-500 text-sm">
-          Import transactions to populate dashboard charts.
+          Zaimportuj transakcje, aby uzupełnić wykresy na pulpicie.
         </p>
       </div>
     );
@@ -243,19 +243,19 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
               <div className="bg-slate-950/45 p-3 rounded-xl border border-slate-800/40">
                 <span className="text-xs text-slate-500 block">Przychody</span>
                 <span className="text-sm font-bold text-emerald-400 mt-1 block">
-                  {formatPln(currentMonthData.przychody)}
+                  {formatPln(currentMonthData.income)}
                 </span>
               </div>
               <div className="bg-slate-950/45 p-3 rounded-xl border border-slate-800/40">
                 <span className="text-xs text-slate-500 block">Wydatki</span>
                 <span className="text-sm font-bold text-rose-400 mt-1 block">
-                  {formatPln(currentMonthData.wydatki)}
+                  {formatPln(currentMonthData.expenses)}
                 </span>
               </div>
               <div className="bg-slate-950/45 p-3 rounded-xl border border-slate-800/40">
                 <span className="text-xs text-slate-500 block">Oszczędności</span>
                 <span className="text-sm font-bold text-blue-400 mt-1 block">
-                  {formatPln(currentMonthData.zaoszczedzone)}
+                  {formatPln(currentMonthData.savings)}
                 </span>
               </div>
             </div>

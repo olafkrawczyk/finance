@@ -11,7 +11,7 @@ import {
 
 interface SavingsLogDataPoint {
   month: string;
-  zaoszczedzone_log: number;
+  savingsLog: number;
 }
 
 interface SavingsLogChartProps {
@@ -25,7 +25,7 @@ export default function SavingsLogChart({ data, onMonthClick }: SavingsLogChartP
   if (!data || data.length < 2) {
     return (
       <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
-        Not enough data to display chart
+        Brak wystarczającej ilości danych do wyświetlenia wykresu
       </div>
     );
   }
@@ -54,7 +54,7 @@ export default function SavingsLogChart({ data, onMonthClick }: SavingsLogChartP
         />
         <Line
           type="monotone"
-          dataKey="zaoszczedzone_log"
+          dataKey="savingsLog"
           stroke="#a855f7"
           strokeWidth={2}
           name="Zaoszcz. log"

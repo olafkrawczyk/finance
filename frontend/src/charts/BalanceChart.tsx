@@ -36,7 +36,7 @@ export default function BalanceChart({ data, onMonthClick }: BalanceChartProps) 
   if (filteredData.length < 2) {
     return (
       <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
-        Not enough data to display chart
+        Brak wystarczającej ilości danych do wyświetlenia wykresu
       </div>
     );
   }

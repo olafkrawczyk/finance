@@ -10,11 +10,11 @@ interface InsightsTabsProps {
 
 export default function InsightsTabs({ activeType, onTypeChange, counts = {} }: InsightsTabsProps) {
   const tabs: { type: TabType; label: string }[] = [
-    { type: 'all', label: 'All' },
-    { type: 'alert', label: 'Alerts' },
-    { type: 'trend', label: 'Trends' },
-    { type: 'tip', label: 'Tips' },
-    { type: 'forecast', label: 'Forecasts' },
+    { type: 'all', label: 'Wszystkie' },
+    { type: 'alert', label: 'Alerty' },
+    { type: 'trend', label: 'Trendy' },
+    { type: 'tip', label: 'Wskazówki' },
+    { type: 'forecast', label: 'Prognozy' },
   ];
 
   return (
