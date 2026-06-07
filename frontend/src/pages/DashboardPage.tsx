@@ -31,7 +31,7 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
           wydatki_bez_stalych: parseFloat(r.wydatki_bez_stalych),
           zaoszczedzone: parseFloat(r.zaoszczedzone),
           zaoszczedzone_log: parseFloat(r.zaoszczedzone_log),
-        }));
+        })).reverse();
         setData(normalized);
         setLoading(false);
       })
