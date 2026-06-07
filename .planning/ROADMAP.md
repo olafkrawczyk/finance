@@ -41,14 +41,16 @@
 **Depends on**: Phase 5 (Polishing & Deployment)
 **Requirements**: SCHEMA-01, SCHEMA-02, SCHEMA-03, SCHEMA-04, SCHEMA-05, SCHEMA-06, SCHEMA-07, SCHEMA-08, SCHEMA-09, SCHEMA-10, SCHEMA-11
 **Success Criteria** (what must be TRUE):
+
   1. All 6 domain tables (accounts, categories, transactions, monthly_opening_balances, assets, import_jobs) have `user_id TEXT NOT NULL` column with FK to `"user"(id)` and `ON DELETE CASCADE`
   2. All existing rows are backfilled and assigned to the first registered user — no data loss after migration
   3. Users can create categories and assets with the same name as another user's resources — global UNIQUE becomes per-user composite `UNIQUE(user_id, name)`
   4. Import hashes are unique per-user via `UNIQUE(user_id, import_hash)`, preventing cross-user dedup collisions
   5. Common query patterns (lookup by id, list by user) are efficiently indexed with composite `(user_id, ...)` indexes
-**Plans**: 2 plans
 
+**Plans**: 2 plans
 Plans:
+
 - [ ] `06-01-PLAN.md` — Create 3 SQL migration files (008: add user_id columns, 009: per-user UNIQUE constraints, 010: index documentation)
 - [ ] `06-02-PLAN.md` — Update schema.sql to match post-migration state, create schema migration tests, update import-dedup tests
 
@@ -58,11 +60,13 @@ Plans:
 **Depends on**: Phase 6
 **Requirements**: SCOPE-01, SCOPE-02, SCOPE-03, SCOPE-04, SCOPE-05, SCOPE-06, SCOPE-07, SEED-01, SEED-02, SEED-03
 **Success Criteria** (what must be TRUE):
+
   1. Every SELECT on scoped tables includes `AND user_id = <sessionUserId>` — no cross-user data leakage via reads
   2. Every INSERT on scoped tables tags data with the authenticated user's ID; every UPDATE/DELETE filters by user_id — no cross-user data modification
   3. Mutations validate ownership of referenced resources (account_id, category_id belong to the current user)
   4. All route handlers extract `userId` from session (`c.get('user').id`), never from client input; inline SQL in routes refactored into use-case functions
   5. New users automatically receive default categories and a default account on first `GET /categories` — no signup hook dependency
+
 **Plans**: TBD
 
 ### Phase 8: Worker Isolation
@@ -71,10 +75,12 @@ Plans:
 **Depends on**: Phase 7
 **Requirements**: WORKER-01, WORKER-02, WORKER-03, WORKER-04
 **Success Criteria** (what must be TRUE):
+
   1. PGMQ message payloads for import jobs carry `user_id` — the enqueuing user's identity propagates through the queue
   2. Import worker extracts `user_id` from PGMQ payload and tags all inserted transactions with the queuing user's ID
   3. Import worker validates that `account_id` belongs to `user_id` before processing records
   4. Insights worker explicitly scopes all queries by `user_id` — confirmed no regression from existing behavior
+
 **Plans**: TBD
 
 ### Phase 9: Testing & Verification
@@ -83,11 +89,13 @@ Plans:
 **Depends on**: Phase 8
 **Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
 **Success Criteria** (what must be TRUE):
+
   1. Multi-user isolation matrix passes: 2+ users × 6 resource types × CREATE/READ/UPDATE/DELETE/LIST are properly isolated
   2. User B receives 404 (not 403) when accessing User A's resources by ID — resource existence hidden cross-user
   3. Worker isolation tests confirm import worker processes only the correct user's queued data
   4. Concurrent user tests show no data leakage during simultaneous inserts by two users
   5. Migration rollback (`down()`) restores previous schema state — up/down round-trip verified
+
 **Plans**: TBD
 
 ### Phase 10: Frontend Cache Isolation
@@ -96,9 +104,11 @@ Plans:
 **Depends on**: Phase 8 (backend API scoping complete, but can run in parallel with Phase 9)
 **Requirements**: FRONTEND-01, FRONTEND-02, FRONTEND-03
 **Success Criteria** (what must be TRUE):
+
   1. Every React Query key is prefixed with `user.id` — per-user cache separation prevents cross-user data display
   2. Query cache is cleared (or fully invalidated) on login and logout — no stale data flashes across sessions
   3. Loading skeletons are displayed during re-fetch after user change — prevents brief cross-user data display
+
 **Plans**: TBD
 **UI hint**: yes
 
