@@ -2,23 +2,26 @@ import sql from '../../infrastructure/db/client';
 import type { Insight, CategoryAggregate, TransactionData } from './entities';
 import type { InsightType } from './entities';
 
-async function getLatestTransactionDate(): Promise<string> {
-  const [row] = await sql`SELECT MAX(date)::text AS latest FROM transactions`;
+async function getLatestTransactionDate(userId: string): Promise<string> {
+  const [row] = await sql`
+    SELECT MAX(date)::text AS latest FROM transactions WHERE user_id = ${userId}
+  `;
   return row?.latest ?? new Date().toISOString().slice(0, 10);
 }
 
 // 1. getInsightDataWindow: Fetch transactions from the last 3 months + same months from previous year,
 // anchored to the latest transaction date so historical seed data is always usable.
 export async function getInsightDataWindow(userId: string): Promise<TransactionData[]> {
-  const anchor = await getLatestTransactionDate();
+  const anchor = await getLatestTransactionDate(userId);
   const rows = await sql`
     SELECT t.*, c.name as category_name
     FROM transactions t
     LEFT JOIN categories c ON t.category_id = c.id
-    WHERE t.date >= (${anchor}::date - interval '3 months')
+    WHERE (t.date >= (${anchor}::date - interval '3 months')
        OR (EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM ${anchor}::date - interval '12 months')
            AND t.date >= ${anchor}::date - interval '15 months'
-           AND t.date < ${anchor}::date - interval '11 months')
+           AND t.date < ${anchor}::date - interval '11 months'))
+      AND t.user_id = ${userId}
     ORDER BY t.date DESC
   `;
   return rows as TransactionData[];
