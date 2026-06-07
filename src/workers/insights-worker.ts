@@ -399,7 +399,7 @@ export async function processAnalysisMessage(msg: { message: any }): Promise<voi
   console.log(`[worker] Claude returned ${narrativeInsightsRaw.length} insights`);
 
   // 3. Call DeepSeek R1 for category forecasts
-  const aggregates = await getCategoryAggregates(txIds);
+  const aggregates = await getCategoryAggregates(txIds, userId);
   console.log(`[worker] Calling DeepSeek R1 for forecasts (${aggregates.length} categories)...`);
   const forecasts = aggregates.length > 0 ? await callDeepSeekForForecast(aggregates) : [];
   console.log(`[worker] DeepSeek returned ${forecasts.length} forecasts`);
