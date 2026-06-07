@@ -42,6 +42,32 @@ export async function startImport(file: File, accountId: string, bankFormat?: 'i
   return json.data; // returns { job_id }
 }
 
+export async function startExcelMigration(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await apiFetch('/api/migration/excel', {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Migration upload failed: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data; // returns { job_id }
+}
+
+export async function getMigrationStatus(jobId: string) {
+  const res = await apiFetch(`/import/${jobId}`);
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to get migration status: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data; // returns ImportJob object
+}
+
 export async function getImportStatus(jobId: string) {
   const res = await apiFetch(`/import/${jobId}`);
   if (!res.ok) {

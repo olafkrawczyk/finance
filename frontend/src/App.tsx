@@ -8,6 +8,7 @@ import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
 import InsightsPage from './pages/InsightsPage';
 import AssetsPage from './pages/AssetsPage';
+import MigrationPage from './pages/MigrationPage';
 import { authClient } from './lib/auth-client';
 import LoginPage from './pages/LoginPage';
 
@@ -70,6 +71,10 @@ export default function App() {
 
     if (currentPath === '/insights') {
       return <InsightsPage />;
+    }
+
+    if (currentPath === '/migration') {
+      return <MigrationPage onMigrationComplete={() => navigateTo('/dashboard')} />;
     }
 
     if (currentPath === '/import') {
