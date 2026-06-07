@@ -4,15 +4,18 @@ CREATE TABLE IF NOT EXISTS accounts (
   name       TEXT NOT NULL,
   type       TEXT NOT NULL CHECK (type IN ('personal', 'business')),
   currency   TEXT NOT NULL DEFAULT 'PLN',
+  user_id    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Categories: 25 total (arval replaces auto; D-07)
 CREATE TABLE IF NOT EXISTS categories (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name          TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL,
+  user_id       TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   is_fixed_cost BOOLEAN NOT NULL DEFAULT false,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, name)
 );
 
 -- Single-entry ledger: income | expense | transfer
@@ -25,20 +28,23 @@ CREATE TABLE IF NOT EXISTS transactions (
   description            TEXT,
   date                   DATE NOT NULL,
   transfer_to_account_id UUID REFERENCES accounts(id),
-  import_hash            TEXT UNIQUE,
-  created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+  import_hash            TEXT,
+  user_id                TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, import_hash)
 );
 
 -- Global monthly opening balance = total net worth (D-01, D-02)
 -- NO account_id — tracks all asset classes combined
 CREATE TABLE IF NOT EXISTS monthly_opening_balances (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   year            INT NOT NULL,
   month           INT NOT NULL CHECK (month BETWEEN 1 AND 12),
   opening_balance NUMERIC(19, 4) NOT NULL,
   notes           TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (year, month)
+  UNIQUE(user_id, year, month)
 );
 
 -- Indexes
@@ -122,6 +128,7 @@ CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification" ("ide
 CREATE TABLE IF NOT EXISTS import_jobs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id    UUID NOT NULL REFERENCES accounts(id),
+  user_id       TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
   total_rows    INT,
   processed     INT NOT NULL DEFAULT 0,
@@ -211,10 +218,12 @@ CREATE TRIGGER trg_insights_no_update
 -- Manual asset lines (investments, cash, bonds, silver, etc.)
 CREATE TABLE IF NOT EXISTS assets (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   value      NUMERIC(19, 4) NOT NULL CHECK (value >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, name)
 );
 
 DROP TRIGGER IF EXISTS trg_assets_updated_at ON assets;
