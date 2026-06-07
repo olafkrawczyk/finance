@@ -46,7 +46,11 @@
   3. Users can create categories and assets with the same name as another user's resources — global UNIQUE becomes per-user composite `UNIQUE(user_id, name)`
   4. Import hashes are unique per-user via `UNIQUE(user_id, import_hash)`, preventing cross-user dedup collisions
   5. Common query patterns (lookup by id, list by user) are efficiently indexed with composite `(user_id, ...)` indexes
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] `06-01-PLAN.md` — Create 3 SQL migration files (008: add user_id columns, 009: per-user UNIQUE constraints, 010: index documentation)
+- [ ] `06-02-PLAN.md` — Update schema.sql to match post-migration state, create schema migration tests, update import-dedup tests
 
 ### Phase 7: Backend Scoping
 
@@ -112,7 +116,7 @@
 | 4.7 Auth UI | v1.0 | 2/2 | Complete | 2026-06-07 |
 | 4.8 Excel Data Migration | v1.0 | 3/3 | Complete | 2026-06-07 |
 | 5. Polishing & Deployment | v1.0 | 4/4 | Complete | 2026-06-07 |
-| 6. Schema Migration & Backfill | v1.1 | 0/TBD | Not started | - |
+| 6. Schema Migration & Backfill | v1.1 | 0/2 | Not started | - |
 | 7. Backend Scoping | v1.1 | 0/TBD | Not started | - |
 | 8. Worker Isolation | v1.1 | 0/TBD | Not started | - |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
