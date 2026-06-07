@@ -319,8 +319,9 @@ export async function processExcelMigrationJob(payload: {
   job_id: string;
   type: 'excel_migration';
   file_path: string;
+  user_id: string;
 }): Promise<{ processed: number; errors: string[] }> {
-  const { job_id, file_path } = payload;
+  const { job_id, file_path, user_id } = payload;
   const errors: string[] = [];
 
   try {
@@ -328,14 +329,16 @@ export async function processExcelMigrationJob(payload: {
     await sql`
       UPDATE import_jobs
       SET status = 'processing', updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     // 2. Load categories and resolve account IDs
-    const dbCategories = (await sql`SELECT id, name FROM categories`) as unknown as CategoryRecord[];
+    const dbCategories = (await sql`
+      SELECT id, name FROM categories WHERE user_id = ${user_id}
+    `) as unknown as CategoryRecord[];
 
-    const [ingAccount] = await sql`SELECT id FROM accounts WHERE name = ${ING_BUSINESS_ACCOUNT_NAME} LIMIT 1`;
-    const [pkoAccount] = await sql`SELECT id FROM accounts WHERE name = ${PKO_PERSONAL_ACCOUNT_NAME} LIMIT 1`;
+    const [ingAccount] = await sql`SELECT id FROM accounts WHERE name = ${ING_BUSINESS_ACCOUNT_NAME} AND user_id = ${user_id} LIMIT 1`;
+    const [pkoAccount] = await sql`SELECT id FROM accounts WHERE name = ${PKO_PERSONAL_ACCOUNT_NAME} AND user_id = ${user_id} LIMIT 1`;
     if (!ingAccount) throw new Error(`Seeded account "${ING_BUSINESS_ACCOUNT_NAME}" not found`);
     if (!pkoAccount) throw new Error(`Seeded account "${PKO_PERSONAL_ACCOUNT_NAME}" not found`);
 
@@ -354,7 +357,7 @@ export async function processExcelMigrationJob(payload: {
     await sql`
       UPDATE import_jobs
       SET total_rows = ${totalRows}, updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     // 5. Empty workbook guard — no parseable data found (GAP-04)
@@ -363,7 +366,7 @@ export async function processExcelMigrationJob(payload: {
       await sql`
         UPDATE import_jobs
         SET status = 'failed', errors = array_append(ARRAY[]::text[], ${errMsg}), processed = 0, updated_at = now()
-        WHERE id = ${job_id}
+        WHERE id = ${job_id} AND user_id = ${user_id}
       `;
       return { processed: 0, errors: [errMsg] };
     }
@@ -374,9 +377,9 @@ export async function processExcelMigrationJob(payload: {
         try {
           if (sheet.openingBalance !== null) {
             await tx`
-              INSERT INTO monthly_opening_balances (year, month, opening_balance)
-              VALUES (${sheet.meta.year}, ${sheet.meta.month}, ${sheet.openingBalance})
-              ON CONFLICT (year, month) DO NOTHING
+              INSERT INTO monthly_opening_balances (year, month, opening_balance, user_id)
+              VALUES (${sheet.meta.year}, ${sheet.meta.month}, ${sheet.openingBalance}, ${user_id})
+              ON CONFLICT (user_id, year, month) DO NOTHING
             `;
           }
 
@@ -395,7 +398,8 @@ export async function processExcelMigrationJob(payload: {
                   amount,
                   description,
                   date,
-                  import_hash
+                  import_hash,
+                  user_id
                 )
                 VALUES (
                   ${accountId},
@@ -404,9 +408,10 @@ export async function processExcelMigrationJob(payload: {
                   ${txn.amount},
                   ${txn.description},
                   ${txn.date},
-                  ${txn.importHash}
+                  ${txn.importHash},
+                  ${user_id}
                 )
-                ON CONFLICT (import_hash) DO NOTHING
+                ON CONFLICT (user_id, import_hash) DO NOTHING
               `;
             }
           }
@@ -422,7 +427,7 @@ export async function processExcelMigrationJob(payload: {
     await sql`
       UPDATE import_jobs
       SET status = 'completed', processed = ${totalRows}, updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     // Success path: delete temp file only on completion (GAP-02)
@@ -443,7 +448,7 @@ export async function processExcelMigrationJob(payload: {
     await sql`
       UPDATE import_jobs
       SET status = 'failed', errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     // Do NOT delete temp file on failure — it must persist for PGMQ retries (GAP-02)
@@ -461,13 +466,15 @@ export async function processJob(payload: {
   account_id: string;
   csv_content: string;
   bank_format: 'ing' | 'ipko';
+  user_id: string;
 } | {
   job_id: string;
   type: 'excel_migration';
   file_path: string;
+  user_id: string;
 }): Promise<{ processed: number; errors: string[] }> {
   if ((payload as { type?: string }).type === 'excel_migration') {
-    return processExcelMigrationJob(payload as { job_id: string; type: 'excel_migration'; file_path: string });
+    return processExcelMigrationJob(payload as { job_id: string; type: 'excel_migration'; file_path: string; user_id: string });
   }
 
   return processCsvImportJob(payload as {
@@ -475,6 +482,7 @@ export async function processJob(payload: {
     account_id: string;
     csv_content: string;
     bank_format: 'ing' | 'ipko';
+    user_id: string;
   });
 }
 
