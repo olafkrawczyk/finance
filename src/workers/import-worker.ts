@@ -486,8 +486,9 @@ async function processCsvImportJob(payload: {
   account_id: string;
   csv_content: string;
   bank_format: 'ing' | 'ipko';
+  user_id: string;
 }): Promise<{ processed: number; errors: string[] }> {
-  const { job_id, account_id, csv_content, bank_format } = payload;
+  const { job_id, account_id, csv_content, bank_format, user_id } = payload;
   const errors: string[] = [];
   let totalProcessed = 0;
 
@@ -497,15 +498,24 @@ async function processCsvImportJob(payload: {
       throw new Error(`Invalid or missing csv_content for job ${job_id}`);
     }
 
+    // Validate account_id belongs to user (D-02: implicit SQL WHERE)
+    const [account] = await sql`
+      SELECT id FROM accounts WHERE id = ${account_id} AND user_id = ${user_id}
+    `;
+    if (!account) {
+      console.error(`Account ${account_id} not found for user ${user_id} — skipping job`);
+      return { processed: 0, errors: [`Account ${account_id} not found for user ${user_id}`] };
+    }
+
     // 1. Update status to 'processing'
     await sql`
       UPDATE import_jobs
       SET status = 'processing', updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     // 2. Load categories for LLM classification
-    const categoryRows = await sql`SELECT id, name, llm_description FROM categories`;
+    const categoryRows = await sql`SELECT id, name, llm_description FROM categories WHERE user_id = ${user_id}`;
     const categoryMap = new Map<string, string>(categoryRows.map((r) => [r.name.toLowerCase(), r.id]));
     const categoryNames = categoryRows.map((r) => ({ name: r.name as string, llm_description: r.llm_description as string | null }));
 
@@ -518,7 +528,7 @@ async function processCsvImportJob(payload: {
     await sql`
       UPDATE import_jobs
       SET total_rows = ${totalRows}, updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     const lines = preprocessed.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -547,14 +557,14 @@ async function processCsvImportJob(payload: {
           throw new Error(`LLM repeatedly returned wrong row count for batch rows ${i}–${i + batch.length - 1} after ${MAX_BATCH_RETRIES} attempts`);
         }
 
-        await insertBatch(account_id, parsed, categoryMap);
+        await insertBatch(account_id, parsed, categoryMap, user_id);
         totalProcessed += batch.length;
         console.log(`[import] Batch rows ${i}–${i + batch.length - 1}: ${parsed.length} transactions saved`);
 
         await sql`
           UPDATE import_jobs
           SET processed = ${totalProcessed}, updated_at = now()
-          WHERE id = ${job_id}
+          WHERE id = ${job_id} AND user_id = ${user_id}
         `;
       } catch (batchErr) {
         const errMsg = batchErr instanceof Error ? batchErr.message : 'Unknown batch error';
@@ -564,7 +574,7 @@ async function processCsvImportJob(payload: {
         await sql`
           UPDATE import_jobs
           SET errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
-          WHERE id = ${job_id}
+          WHERE id = ${job_id} AND user_id = ${user_id}
         `;
       }
     }
@@ -574,7 +584,7 @@ async function processCsvImportJob(payload: {
     await sql`
       UPDATE import_jobs
       SET status = ${finalStatus}, updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
     console.log(`[import] Job ${job_id} ${finalStatus} — ${totalProcessed}/${totalRows} rows, ${errors.length} batch error(s)`);
 
@@ -587,7 +597,7 @@ async function processCsvImportJob(payload: {
     await sql`
       UPDATE import_jobs
       SET status = 'failed', errors = array_append(COALESCE(errors, ARRAY[]::text[]), ${errMsg}), updated_at = now()
-      WHERE id = ${job_id}
+      WHERE id = ${job_id} AND user_id = ${user_id}
     `;
 
     return { processed: totalProcessed, errors };
