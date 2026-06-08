@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTransactionsList, useCategories, useAssignCategory } from '../lib/query/hooks';
 import Skeleton from '../components/Skeleton';
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
@@ -18,6 +18,12 @@ export default function CategorizePage() {
   const categories = useMemo(() => {
     return categoryRows ?? [];
   }, [categoryRows]);
+
+  useEffect(() => {
+    if (categories.length > 0 && !targetCategory) {
+      setTargetCategory(categories[0].id);
+    }
+  }, [categories, targetCategory]);
 
   const transactions = useMemo(() => {
     if (!txResult?.data) return [];
