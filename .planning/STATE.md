@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Multi-Tenant Data Isolation
 status: completed
-last_updated: "2026-06-07T21:29:19.189Z"
-last_activity: 2026-06-07 -- Phase 08 executed
+last_updated: "2026-06-08T05:07:58.867Z"
+last_activity: 2026-06-07 -- Phase 09 executed
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 10
-  completed_plans: 9
-  percent: 40
+  completed_phases: 3
+  total_plans: 14
+  completed_plans: 13
+  percent: 60
 ---
 
 # Project State: Financial Planning App
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** Comprehensive financial planning with user-scoped data isolation
-**Current focus:** Phase 09 — testing-and-verification
+**Current focus:** Phase 10 — frontend-auth-wiring
 
 ## Current Position
 
-Phase: 08 (worker-isolation) — COMPLETE
-Plan: 3 of 3
-Status: Phase 08 executed — 3/3 plans complete
-Last activity: 2026-06-07 -- Phase 08 executed
+Phase: 09 (testing-verification) — COMPLETE
+Plan: 4 of 4
+Status: Phase 09 executed — 4/4 plans complete
+Last activity: 2026-06-07 -- Phase 09 executed
 
 Progress: [██████████] 100%
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100%
 | 4.9 Transaction Enh. | 4 | ~26 min | ~6.5 min |
 | 5. Polishing & Deploy | 4 | ~10 min | ~2.5 min |
 | 8. Worker Isolation | 3 | ~11 min | ~3.7 min |
+| 9. Testing & Verification | 4 | ~33 min | ~8.3 min |
 
 *Updated after each plan completion*
 
@@ -68,6 +69,9 @@ Progress: [██████████] 100%
 - **v1.1 (Phase 7)**: Reference queries extracted to `src/core/reference/use-cases.ts`
 - **v1.1 (Phase 7)**: Import enqueue scoped in Phase 7 (user_id + PGMQ payload); worker enforcement in Phase 8
 - **v1.1 (Phase 7)**: `llm_description` column to be added to categories (folded todo)
+- **v1.1 (Phase 9)**: Migration 009 down SQL had invalid `ADD CONSTRAINT IF NOT EXISTS` syntax — fixed with idempotent `DO $$` blocks using `pg_constraint` checks
+- **v1.1 (Phase 9)**: `ALTER TABLE ... ADD COLUMN ... NOT NULL` fails on non-empty tables — manual restore pattern (add nullable → backfill → set NOT NULL → add FK) needed after down-up cycles
+- **v1.1 (Phase 9)**: Concurrent isolation tests use `Promise.all` with per-promise error handling; IDs captured from return values, not shared variables (avoids race condition)
 
 ### Pending Todos
 
@@ -91,5 +95,5 @@ Items acknowledged and carried forward from v1.0 milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-07T20:29:50.765Z
-Next phase: Phase 9 (Testing & Verification)
+Last session: 2026-06-08T05:07:58.861Z
+Next phase: Phase 10 (Frontend Auth Wiring)
