@@ -897,21 +897,19 @@ afterAll(async () => {
 | A4 | The `signupEmail` pattern from api-scoping.test.ts works identically in concurrent tests | Concurrent Tests | Better Auth rate limiting or session uniqueness issues. Mitigation: use fresh unique email per test run. |
 | A5 | `app.request()` is safe to call concurrently with `Promise.all` | Concurrent Tests | Hono's request handling is async but shares global state. Mitigation: test in isolation first. |
 
-## Open Questions
+## Open Questions — (RESOLVED)
 
-1. **Should concurrent tests be in a separate file or in api-scoping.test.ts?**
+1. **(RESOLVED) Should concurrent tests be in a separate file or in api-scoping.test.ts?**
    - What we know: D-01 explicitly lists pagination, filters, and bulk create as API scoping extensions. D-05/D-06 (concurrent) are a separate TEST-04 concern. The concurrent test shares the same signup setup as api-scoping.test.ts.
-   - What's unclear: Whether concurrent tests should share the api-scoping.test.ts file (simpler, reuses setup) or be separate (cleaner, independently runnable).
-   - Recommendation: **Separate file `tests/concurrent-isolation.test.ts`** — the Promise.all pattern and its cleanup (deleting concurrently created rows) are distinct enough to warrant isolation. The signup pattern is ~50 lines to copy. This also allows running concurrent tests independently to debug timing issues.
+   - Resolution: **Separate file `tests/concurrent-isolation.test.ts`** — the Promise.all pattern and its cleanup (deleting concurrently created rows) are distinct enough to warrant isolation. The signup pattern is ~50 lines to copy. This also allows running concurrent tests independently to debug timing issues.
 
-2. **What's the right `count` for migration rollback?**
+2. **(RESOLVED) What's the right `count` for migration rollback?**
    - What we know: Migrations 008, 009, 010, 011 are the Phase 6-7 migration set. 008 adds user_id columns, 009 changes UNIQUE constraints, 010 is a documentation-only migration, 011 adds llm_description.
-   - What's unclear: Whether other migrations (001-007) might also need rollback testing. They predate user isolation and are not in scope.
-   - Recommendation: Use `count: 4` to roll back 008-011 specifically, or use `direction: 'down'` without count (rolls back ALL) then `direction: 'up'` (re-applies ALL). The latter is safer against migration count drift.
+   - Resolution: Use `count: 4` to roll back 008-011 specifically, as documented in the plan's Task 2 action. The down migration only targets Phase 6-7 migrations; 001-007 are out of scope and are not rolled back.
 
-3. **Should the rollback test verify 008-011 down individually or batch?**
+3. **(RESOLVED) Should the rollback test verify 008-011 down individually or batch?**
    - What we know: D-14 through D-17 require schema assertions after up and down. Running down individually per migration would allow granular assertions.
-   - Recommendation: **Batch approach** — run all 4 down, then assert full down state. The per-migration intermediate states are not specified in requirements and add complexity with no clear value. The constraints D-15 and D-17 clearly describe the post-down state after all 4 are rolled back.
+   - Resolution: **Batch approach** — run all 4 down in a single `beforeAll`, then assert full down state. The per-migration intermediate states are not specified in requirements and add complexity with no clear value. The constraints D-15 and D-17 clearly describe the post-down state after all 4 are rolled back.
 
 ## Environment Availability
 
