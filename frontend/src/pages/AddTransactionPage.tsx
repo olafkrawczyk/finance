@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { getCategories, getAccounts, createTransaction, getTransaction, updateTransaction } from '../api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useCategories, useAccounts, useTransactionDetail } from '../lib/query/hooks';
+import { useMutation } from '@tanstack/react-query';
+import { queryClient } from '../lib/query/client';
+import { useUserId } from '../lib/query/provider';
+import Skeleton from '../components/Skeleton';
+import * as api from '../api';
 import CategoryDropdown, { Category } from '../components/CategoryDropdown';
 
 interface Account {
@@ -11,12 +16,11 @@ interface Account {
 
 interface AddTransactionPageProps {
   onSuccess?: () => void;
-  transactionId?: string; // NEW — when provided, operates in edit mode
+  transactionId?: string;
 }
 
 export default function AddTransactionPage({ onSuccess, transactionId }: AddTransactionPageProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const userId = useUserId();
   const [categoryId, setCategoryId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -25,42 +29,45 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(!!transactionId);
+
+  const { data: categoryRows, isPending: catLoading } = useCategories();
+  const { data: accountRows, isPending: accLoading } = useAccounts();
+  const { data: editTx, isPending: txLoading } = useTransactionDetail(transactionId!);
+
+  const isEditLoading = !!transactionId && (txLoading || catLoading || accLoading);
+
+  const categories = useMemo(() => categoryRows ?? [], [categoryRows]);
+  const accounts = useMemo(() => accountRows ?? [], [accountRows]);
 
   useEffect(() => {
-    Promise.all([getCategories(), getAccounts()])
-      .then(([catRows, accRows]) => {
-        setCategories(catRows);
-        setAccounts(accRows);
-        if (catRows.length > 0) {
-          setCategoryId(catRows[0].id);
-        }
-      })
-      .catch((err) => {
-        setError(err.message || 'Nie udało się załadować kategorii lub kont');
-      });
-  }, []);
+    if (categories.length > 0 && !categoryId) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
 
-  // Edit mode: fetch existing transaction and pre-fill form
   useEffect(() => {
-    if (!transactionId) return;
-    setLoading(true);
-    Promise.all([getTransaction(transactionId), getCategories(), getAccounts()])
-      .then(([tx, catRows, accRows]) => {
-        setType(tx.type);
-        setCategoryId(tx.category_id || '');
-        setAmount(tx.amount);
-        setDescription(tx.description || '');
-        setDate(tx.date.split('T')[0]);
-        setCategories(catRows);
-        setAccounts(accRows);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Nie udało się wczytać transakcji');
-        setLoading(false);
-      });
-  }, [transactionId]);
+    if (!editTx) return;
+    setType(editTx.type);
+    setCategoryId(editTx.category_id || '');
+    setAmount(editTx.amount);
+    setDescription(editTx.description || '');
+    setDate(editTx.date.split('T')[0]);
+  }, [editTx]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: Parameters<typeof api.createTransaction>[0]) => api.createTransaction(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updateTransaction>[1] }) =>
+      api.updateTransaction(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,16 +96,19 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
     try {
       const formattedAmount = parseFloat(amount).toFixed(4);
       if (transactionId) {
-        await updateTransaction(transactionId, {
-          account_id: defaultAccountId,
-          category_id: categoryId,
-          type,
-          amount: formattedAmount,
-          description: description.trim() || null,
-          date,
+        await updateMutation.mutateAsync({
+          id: transactionId,
+          data: {
+            account_id: defaultAccountId,
+            category_id: categoryId,
+            type,
+            amount: formattedAmount,
+            description: description.trim() || null,
+            date,
+          },
         });
       } else {
-        await createTransaction({
+        await createMutation.mutateAsync({
           account_id: defaultAccountId,
           category_id: categoryId,
           type,
@@ -112,8 +122,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
       setAmount('');
       setDescription('');
       setDate(new Date().toISOString().split('T')[0]);
-      
-      // Auto-navigate or trigger callback
+
       if (onSuccess) {
         onSuccess();
       }
@@ -126,11 +135,10 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
 
   const isFormValid = categoryId && amount && parseFloat(amount) > 0 && date && accounts.length > 0;
 
-  if (loading) {
+  if (isEditLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm ml-3">Ładowanie transakcji...</p>
+      <div className="max-w-lg w-full mx-auto" aria-busy="true">
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     );
   }
@@ -155,7 +163,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Type selector */}
         <div>
           <label htmlFor="type-select" className="block text-slate-300 text-sm font-semibold mb-2">
             Typ transakcji
@@ -172,7 +179,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
           </select>
         </div>
 
-        {/* Category dropdown */}
         <div>
           <CategoryDropdown
             categories={categories}
@@ -184,7 +190,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
           />
         </div>
 
-        {/* Amount */}
         <div>
           <label htmlFor="amount-input" className="block text-slate-300 text-sm font-semibold mb-2">
             Kwota
@@ -202,7 +207,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
           />
         </div>
 
-        {/* Date */}
         <div>
           <label htmlFor="date-input" className="block text-slate-300 text-sm font-semibold mb-2">
             Data
@@ -217,7 +221,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
           />
         </div>
 
-        {/* Description */}
         <div>
           <label htmlFor="description-input" className="block text-slate-300 text-sm font-semibold mb-2">
             Opis
@@ -232,7 +235,6 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
           />
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={!isFormValid || submitting}
