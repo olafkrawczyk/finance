@@ -1,56 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { getTransactions, getCategories, assignCategory } from '../api';
+import React, { useState, useMemo } from 'react';
+import { useTransactionsList, useCategories, useAssignCategory } from '../lib/query/hooks';
+import Skeleton from '../components/Skeleton';
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
 import CategoryDropdown, { Category } from '../components/CategoryDropdown';
 
 export default function CategorizePage() {
-  const [transactions, setTransactions] = useState<NormalizedTransaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetCategory, setTargetCategory] = useState<string>('');
   const [assigning, setAssigning] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchData = () => {
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      getTransactions({ per_page: 500, uncategorized: true }),
-      getCategories(),
-    ])
-      .then(([txResult, catRows]) => {
-        setCategories(catRows);
+  const { data: txResult, isPending } = useTransactionsList({ per_page: 500, uncategorized: true });
+  const { data: categoryRows } = useCategories();
+  const assignMutation = useAssignCategory();
 
-        const uncategorized = (txResult.data ?? [])
-          .map((t: any) => ({
-            id: t.id,
-            date: t.date,
-            description: t.description,
-            category_name: null,
-            type: t.type,
-            amount: parseFloat(t.amount),
-          }));
+  const categories = useMemo(() => {
+    return categoryRows ?? [];
+  }, [categoryRows]);
 
-        setTransactions(uncategorized);
-        setSelectedIds(new Set());
-        
-        // Auto-select first category as target if available
-        if (catRows.length > 0) {
-          setTargetCategory(catRows[0].id);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Nie udało się załadować nieskategoryzowanych transakcji');
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const transactions = useMemo(() => {
+    if (!txResult?.data) return [];
+    return txResult.data.map((t: any) => ({
+      id: t.id,
+      date: t.date,
+      description: t.description,
+      category_name: null,
+      type: t.type,
+      amount: parseFloat(t.amount),
+    }));
+  }, [txResult]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -83,11 +62,8 @@ export default function CategorizePage() {
 
     const ids = Array.from(selectedIds);
     try {
-      await Promise.all(ids.map((id) => assignCategory(id, targetCategory)));
+      await Promise.all(ids.map((id) => assignMutation.mutateAsync({ transactionId: id, categoryId: targetCategory })));
       setSuccess('Kategorie zostały pomyślnie zapisane');
-      
-      // Remove successfully categorized transactions from state
-      setTransactions((prev) => prev.filter((t) => !selectedIds.has(t.id)));
       setSelectedIds(new Set());
     } catch (err: any) {
       setError(err.message || 'Nie udało się zapisać kategorii');
@@ -96,11 +72,15 @@ export default function CategorizePage() {
     }
   };
 
-  if (loading) {
+  if (isPending) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm font-medium">Ładowanie transakcji...</p>
+      <div className="space-y-6 max-w-6xl mx-auto w-full px-4" aria-busy="true">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     );
   }
@@ -145,7 +125,7 @@ export default function CategorizePage() {
                 includeUncategorized={false}
               />
             </div>
-            
+
             <button
               onClick={handleAssign}
               disabled={selectedIds.size === 0 || !targetCategory || assigning}

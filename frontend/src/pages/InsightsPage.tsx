@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { getInsights, dismissInsight, generateInsights } from '../api';
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useInsightsList } from '../lib/query/hooks';
+import { queryClient } from '../lib/query/client';
+import { useUserId } from '../lib/query/provider';
+import Skeleton from '../components/Skeleton';
+import * as api from '../api';
 import InsightCard from '../components/InsightCard';
 import InsightsTabs from '../components/InsightsTabs';
 import DismissConfirmDialog from '../components/DismissConfirmDialog';
@@ -18,64 +23,49 @@ interface Insight {
 }
 
 export default function InsightsPage() {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<'all' | 'alert' | 'trend' | 'tip' | 'forecast'>('all');
   const [page, setPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [dismissTarget, setDismissTarget] = useState<{ id: string; title: string } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [counts, setCounts] = useState<Record<string, number>>({});
 
   const perPage = 20;
 
-  const fetchInsightsList = () => {
-    setLoading(true);
-    getInsights({
-      type: activeType !== 'all' ? activeType : undefined,
-      dismissed: false,
-      page,
-      per_page: perPage,
-    })
-      .then((res) => {
-        setInsights(res.data || []);
-        setTotalCount(res.meta?.total || 0);
-        setError(null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load insights:', err);
-        setError(err.message || 'Nie udało się załadować analiz');
-        setLoading(false);
-      });
-  };
+  const { data, isPending, error } = useInsightsList({
+    type: activeType !== 'all' ? activeType : undefined,
+    dismissed: false,
+    page,
+    per_page: perPage,
+  });
 
-  const fetchCounts = () => {
-    getInsights({ dismissed: false, per_page: 100 })
-      .then((res) => {
-        const newCounts: Record<string, number> = { all: 0, alert: 0, trend: 0, tip: 0, forecast: 0 };
-        if (res.data) {
-          res.data.forEach((i: any) => {
-            newCounts.all++;
-            if (newCounts[i.type] !== undefined) {
-              newCounts[i.type]++;
-            }
-          });
-        }
-        setCounts(newCounts);
-      })
-      .catch((err) => console.warn('Failed to fetch counts:', err));
-  };
+  const insights = data?.data ?? [];
+  const totalCount = data?.meta?.total ?? 0;
 
-  useEffect(() => {
-    fetchInsightsList();
-  }, [activeType, page]);
+  const userId = useUserId();
 
-  useEffect(() => {
-    fetchCounts();
-  }, []);
+  const dismissMutation = useMutation({
+    mutationFn: (id: string) => api.dismissInsight(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => api.generateInsights(),
+    onSuccess: () => {
+      setSuccessMsg('Zgłoszenie wysłane. Analizowanie Twoich finansów...');
+      setTimeout(() => {
+        setGenerating(false);
+        setSuccessMsg(null);
+        setPage(1);
+        queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      }, 3000);
+    },
+    onError: (err: any) => {
+      console.error('Failed to generate insights:', err);
+      setGenerating(false);
+    },
+  });
 
   const handleTypeChange = (type: 'all' | 'alert' | 'trend' | 'tip' | 'forecast') => {
     setActiveType(type);
@@ -91,40 +81,20 @@ export default function InsightsPage() {
 
   const handleConfirmDismiss = () => {
     if (!dismissTarget) return;
-    const targetId = dismissTarget.id;
-    dismissInsight(targetId)
-      .then(() => {
-        setInsights(prev => prev.filter(i => i.id !== targetId));
+    dismissMutation.mutate(dismissTarget.id, {
+      onSuccess: () => {
         setDismissTarget(null);
-        fetchCounts();
-      })
-      .catch((err) => {
-        console.error('Failed to dismiss insight:', err);
+      },
+      onError: () => {
         alert('Nie udało się odrzucić wskazówki');
         setDismissTarget(null);
-      });
+      },
+    });
   };
 
   const handleGenerate = () => {
     setGenerating(true);
-    setError(null);
-    setSuccessMsg(null);
-    generateInsights()
-      .then(() => {
-        setSuccessMsg('Zgłoszenie wysłane. Analizowanie Twoich finansów...');
-        setTimeout(() => {
-          setGenerating(false);
-          setSuccessMsg(null);
-          setPage(1);
-          fetchInsightsList();
-          fetchCounts();
-        }, 3000);
-      })
-      .catch((err) => {
-        console.error('Failed to generate insights:', err);
-        setError('Nie udało się wygenerować wskazówek. Spróbuj ponownie później.');
-        setGenerating(false);
-      });
+    generateMutation.mutate();
   };
 
   const totalPages = Math.ceil(totalCount / perPage);
@@ -170,16 +140,24 @@ export default function InsightsPage() {
 
       {error && (
         <div className="bg-red-950/50 border border-red-800 rounded-lg p-4 text-red-300 text-sm">
-          {error}
+          {error.message}
         </div>
       )}
 
-      <InsightsTabs activeType={activeType} onTypeChange={handleTypeChange} counts={counts} />
+      <InsightsTabs activeType={activeType} onTypeChange={handleTypeChange} counts={{}} />
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
-          <p className="text-slate-400 mt-4 text-sm">Ładowanie analiz...</p>
+      {isPending ? (
+        <div className="space-y-4" aria-busy="true">
+          <div className="flex gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-8 w-24 rounded-lg" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-48 w-full rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : insights.length === 0 ? (
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-8 text-center max-w-lg mx-auto">
@@ -198,7 +176,7 @@ export default function InsightsPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {insights.map((insight) => (
+            {insights.map((insight: Insight) => (
               <InsightCard
                 key={insight.id}
                 insight={insight}

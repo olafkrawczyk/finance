@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { getAssets, createAsset, updateAsset, deleteAsset } from '../api';
+import React, { useState, useMemo } from 'react';
+import { useAssets } from '../lib/query/hooks';
+import { useMutation } from '@tanstack/react-query';
+import { queryClient } from '../lib/query/client';
+import { useUserId } from '../lib/query/provider';
+import Skeleton from '../components/Skeleton';
+import * as api from '../api';
 
 interface Asset {
   id: string;
@@ -8,44 +13,49 @@ interface Asset {
 }
 
 export default function AssetsPage() {
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { data: assetsData, isPending } = useAssets();
+  const userId = useUserId();
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // New Asset form state
   const [newName, setNewName] = useState<string>('');
   const [newValue, setNewValue] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
   const [editingValue, setEditingValue] = useState<string>('');
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchAssets();
-  }, []);
+  const assets = useMemo(() => {
+    return (assetsData ?? []).map((a: any) => ({
+      id: a.id,
+      name: a.name,
+      value: parseFloat(a.value),
+    }));
+  }, [assetsData]);
 
-  const fetchAssets = () => {
-    setLoading(true);
-    setError(null);
-    getAssets()
-      .then((data) => {
-        const parsed = (data ?? []).map((a: any) => ({
-          id: a.id,
-          name: a.name,
-          value: parseFloat(a.value),
-        }));
-        setAssets(parsed);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Nie udało się załadować aktywów');
-        setLoading(false);
-      });
-  };
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; value: number }) => api.createAsset(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name: string; value: number } }) => api.updateAsset(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteAsset(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
 
   const handleAddAsset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,14 +74,13 @@ export default function AssetsPage() {
     setSuccess(null);
 
     try {
-      const created = await createAsset({
+      await createMutation.mutateAsync({
         name: newName.trim(),
         value: val,
       });
       setSuccess('Pomyślnie dodano nowe aktywo');
       setNewName('');
       setNewValue('');
-      setAssets((prev) => [...prev, { id: created.id, name: created.name, value: parseFloat(created.value) }]);
     } catch (err: any) {
       setError(err.message || 'Nie udało się dodać aktywa');
     } finally {
@@ -109,13 +118,7 @@ export default function AssetsPage() {
     setSuccess(null);
 
     try {
-      const updated = await updateAsset(id, {
-        name: editingName.trim(),
-        value: val,
-      });
-      setAssets((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, name: updated.name, value: parseFloat(updated.value) } : a))
-      );
+      await updateMutation.mutateAsync({ id, data: { name: editingName.trim(), value: val } });
       setSuccess('Pomyślnie zaktualizowano aktywo');
       handleCancelEdit();
     } catch (err: any) {
@@ -134,8 +137,7 @@ export default function AssetsPage() {
     setSuccess(null);
 
     try {
-      await deleteAsset(id);
-      setAssets((prev) => prev.filter((a) => a.id !== id));
+      await deleteMutation.mutateAsync(id);
       setSuccess('Pomyślnie usunięto aktywo');
     } catch (err: any) {
       setError(err.message || 'Nie udało się usunąć aktywa');
@@ -151,11 +153,14 @@ export default function AssetsPage() {
 
   const totalSum = assets.reduce((sum, asset) => sum + asset.value, 0);
 
-  if (loading) {
+  if (isPending) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm font-medium">Ładowanie aktywów...</p>
+      <div className="space-y-6 max-w-6xl mx-auto w-full px-4" aria-busy="true">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     );
   }
@@ -180,7 +185,6 @@ export default function AssetsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Assets List */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <h3 className="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider">
@@ -278,7 +282,6 @@ export default function AssetsPage() {
             )}
           </div>
 
-          {/* Sum Summary Card */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex justify-between items-center shadow-lg">
             <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
               Całkowita wartość aktywów
@@ -289,7 +292,6 @@ export default function AssetsPage() {
           </div>
         </div>
 
-        {/* Add Asset Form Card */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl h-fit">
           <h3 className="text-sm font-semibold text-slate-400 mb-6 uppercase tracking-wider">
             Dodaj nowe aktywo

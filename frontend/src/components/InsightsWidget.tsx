@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { getInsights } from '../api';
+import React from 'react';
+import { useInsightsList } from '../lib/query/hooks';
+import Skeleton from '../components/Skeleton';
 import { formatRelativeTime, getPriorityColor, getTypeLabel } from '../lib/insights';
 
 interface Insight {
@@ -14,31 +15,12 @@ interface Insight {
 }
 
 export default function InsightsWidget() {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, error } = useInsightsList(
+    { per_page: 3, dismissed: false },
+    { refetchInterval: 60000 },
+  );
 
-  const fetchLatestInsights = () => {
-    getInsights({ per_page: 3, dismissed: false })
-      .then((res) => {
-        setInsights(res.data || []);
-        setError(null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch latest insights for widget:', err);
-        setError(err.message || 'Nie udało się załadować analiz');
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchLatestInsights();
-
-    // Poll every 60 seconds
-    const intervalId = setInterval(fetchLatestInsights, 60000);
-    return () => clearInterval(intervalId);
-  }, []);
+  const insights = data?.data ?? [];
 
   const navigateToInsights = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,7 +28,7 @@ export default function InsightsWidget() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="mb-8">
         <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -54,21 +36,8 @@ export default function InsightsWidget() {
         </h3>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="animate-pulse bg-slate-800/30 border border-slate-800/50 rounded-xl p-4 min-w-[250px] h-[120px] flex-shrink-0 flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-2 w-2 rounded-full bg-slate-700" />
-                  <div className="h-4 w-12 bg-slate-700 rounded" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 bg-slate-700 rounded w-full" />
-                  <div className="h-3 bg-slate-700 rounded w-5/6" />
-                </div>
-              </div>
-              <div className="h-3 bg-slate-700 rounded w-1/3 mt-2" />
+            <div key={n} className="min-w-[250px] flex-shrink-0">
+              <Skeleton className="h-[120px] w-full rounded-xl" />
             </div>
           ))}
         </div>
@@ -83,7 +52,7 @@ export default function InsightsWidget() {
           Najnowsze analizy
         </h3>
         <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-4 text-red-400 text-xs">
-          Wystąpił błąd podczas ładowania analiz: {error}
+          Wystąpił błąd podczas ładowania analiz: {error.message}
         </div>
       </div>
     );
@@ -111,7 +80,7 @@ export default function InsightsWidget() {
         Najnowsze analizy
       </h3>
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800">
-        {insights.map((i) => {
+        {insights.map((i: Insight) => {
           const colorConfig = getPriorityColor(i.priority);
           return (
             <div
