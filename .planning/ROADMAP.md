@@ -125,8 +125,8 @@ Plans:
   2. Query cache is cleared (or fully invalidated) on login and logout — no stale data flashes across sessions
   3. Loading skeletons are displayed during re-fetch after user change — prevents brief cross-user data display
 
-**Plans**: 3 plans
-Plans:
+**Plans**: 3 plansPlans:
+
 - [ ] `10-01-PLAN.md` — Install @tanstack/react-query, create infrastructure (client/queryKeys/provider/hooks), Skeleton component, wire main.tsx
 - [ ] `10-02-PLAN.md` — Convert MonthlyPage + DashboardPage to React Query hooks + skeleton layouts
 - [ ] `10-03-PLAN.md` — Convert remaining pages (Summary, Insights, Assets, Categorize, InsightsWidget, AddTransaction) to React Query hooks + skeleton
