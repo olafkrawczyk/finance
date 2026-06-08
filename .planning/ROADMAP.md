@@ -31,7 +31,7 @@
 - [x] **Phase 7: Backend Scoping** — Every use-case, route handler, and seed path enforces per-user data isolation (completed 2026-06-07)
 - [x] **Phase 8: Worker Isolation** — PGMQ workers process only the correct user's data via scoped queries and payload-based userId (completed 2026-06-07)
 - [ ] **Phase 9: Testing & Verification** — Comprehensive multi-user isolation matrix, negative tests, worker tests, migration rollback
-- [ ] **Phase 10: Frontend Cache Isolation** — React Query keys scoped per user, cache cleared on auth change, loading skeletons
+- [x] **Phase 10: Frontend Cache Isolation** — React Query keys scoped per user, cache cleared on auth change, loading skeletons (completed 2026-06-08)
 
 ## Phase Details
 
@@ -149,7 +149,7 @@ Plans:
 | 7. Backend Scoping | v1.1 | 4/4 | Complete   | 2026-06-07 |
 | 8. Worker Isolation | v1.1 | 3/3 | Complete | 2026-06-07 |
 | 9. Testing & Verification | v1.1 | 0/TBD | Not started | - |
-| 10. Frontend Cache Isolation | v1.1 | 0/3 | Not started | - |
+| 10. Frontend Cache Isolation | v1.1 | 3/3 | Complete   | 2026-06-08 |
 
 ## Archive
 
