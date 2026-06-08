@@ -1,6 +1,6 @@
 import React from 'react';
 import { useInsightsList } from '../lib/query/hooks';
-import Skeleton from '../components/Skeleton';
+import Skeleton from './Skeleton';
 import { formatRelativeTime, getPriorityColor, getTypeLabel } from '../lib/insights';
 
 interface Insight {
