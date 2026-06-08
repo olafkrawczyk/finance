@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getTransactions, getOpeningBalance, getCategories, deleteTransaction } from '../api';
+import React, { useMemo } from 'react';
+import { useTransactionsList, useOpeningBalance, useCategories, useDeleteTransaction } from '../lib/query/hooks';
+import Skeleton from '../components/Skeleton';
 import TransactionTable, { NormalizedTransaction } from '../components/TransactionTable';
 import MonthSidebar from '../components/MonthSidebar';
 
@@ -71,51 +72,25 @@ export function extractUniqueCategories(
 }
 
 interface MonthlyPageProps {
-  yearMonth: string; // YYYY-MM
+  yearMonth: string;
 }
 
 export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
-  const [transactions, setTransactions] = useState<NormalizedTransaction[] | null>(null);
-  const [sidebarData, setSidebarData] = useState<{
-    openingBalance: string | null;
-    incomeByCategory: { category: string; amount: number }[];
-    fixedCostTotal: number;
-    nonFixedExpenses: number;
-  } | null>(null);
-  
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isTruncated, setIsTruncated] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
-  // Search, sort, and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('date-desc');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [selectedType, setSelectedType] = React.useState('all');
+  const [selectedCategory, setSelectedCategory] = React.useState('all');
+  const [sortBy, setSortBy] = React.useState('date-desc');
 
-  // Extract all unique, non-null category_name values and sort alphabetically
-  const uniqueCategories = useMemo(() => {
-    return extractUniqueCategories(transactions);
-  }, [transactions]);
-
-  // Filter and sort transactions in memory
-  const filteredAndSortedTransactions = useMemo(() => {
-    return filterAndSortTransactions(transactions, { searchTerm, selectedType, selectedCategory, sortBy });
-  }, [transactions, searchTerm, selectedType, selectedCategory, sortBy]);
-
-  // Parse YYYY-MM into year and month components
   const [yearStr, monthStr] = yearMonth.split('-');
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
   const dateFrom = `${yearStr}-${monthStr}-01`;
-  // Compute the real last day of the month: new Date(year, month, 0) gives day 0
-  // of the following month, which is the last day of the current month.
   const lastDay = new Date(year, month, 0).getDate();
   const dateTo = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
-  // Format month heading in Polish or general English depending on locale
   const getMonthName = (m: number) => {
     const months = [
       'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
@@ -124,128 +99,121 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
     return months[m - 1] || '';
   };
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
+  const { data: txResult, isPending: txLoading, error: txError } = useTransactionsList({ date_from: dateFrom, date_to: dateTo, per_page: 500 });
+  const { data: openingBalances, isPending: obLoading } = useOpeningBalance(year, month);
+  const { data: categories, isPending: catLoading } = useCategories();
+  const deleteMutation = useDeleteTransaction();
 
-    Promise.all([
-      getTransactions({ date_from: dateFrom, date_to: dateTo, per_page: 500 }),
-      getOpeningBalance(year, month),
-      getCategories(),
-    ])
-      .then(([txResult, openingBalances, categories]) => {
-        const txRows = txResult.data;
-        const txMeta = txResult.meta;
-        // Create lookup maps for categories
-        const categoryMap = new Map<string, any>();
-        categories.forEach((cat: any) => {
-          categoryMap.set(cat.id, cat);
-        });
+  const isPending = txLoading || obLoading || catLoading;
 
-        // 1. Normalize transactions
-        const normalizedTx: NormalizedTransaction[] = txRows.map((t: any) => ({
-          id: t.id,
-          date: t.date,
-          description: t.description,
-          category_name: t.category_id ? (categoryMap.get(t.category_id)?.name ?? null) : null,
-          type: t.type,
-          amount: parseFloat(t.amount),
-        }));
-        setTransactions(normalizedTx);
+  const { transactions, sidebarData, isTruncated } = useMemo(() => {
+    if (!txResult?.data || !categories || !openingBalances) {
+      return { transactions: null, sidebarData: null, isTruncated: false };
+    }
 
-        // Warn if the response was truncated at the 500-row cap
-        if (txMeta && txMeta.total > normalizedTx.length) {
-          setIsTruncated(true);
-        }
+    const categoryMap = new Map<string, any>();
+    categories.forEach((cat: any) => {
+      categoryMap.set(cat.id, cat);
+    });
 
-        // 2. Compute Sidebar Data
-        // Opening balance
-        const openingBalanceVal = openingBalances[0]?.opening_balance ?? null;
+    const normalizedTx: NormalizedTransaction[] = txResult.data.map((t: any) => ({
+      id: t.id,
+      date: t.date,
+      description: t.description,
+      category_name: t.category_id ? (categoryMap.get(t.category_id)?.name ?? null) : null,
+      type: t.type,
+      amount: parseFloat(t.amount),
+    }));
 
-        // Income by category
-        const incomeMap = new Map<string, number>();
-        txRows
-          .filter((t: any) => t.type === 'income')
-          .forEach((t: any) => {
-            const catName = t.category_id ? (categoryMap.get(t.category_id)?.name ?? 'Inne') : 'Nieskategoryzowane';
-            const amt = parseFloat(t.amount);
-            incomeMap.set(catName, (incomeMap.get(catName) || 0) + amt);
-          });
-        const incomeByCategory = Array.from(incomeMap.entries()).map(([category, amount]) => ({
-          category,
-          amount,
-        }));
+    const truncated = txResult.meta && txResult.meta.total > normalizedTx.length;
 
-        // Fixed vs Non-fixed costs
-        let fixedCostTotal = 0;
-        let nonFixedExpenses = 0;
-        txRows
-          .filter((t: any) => t.type === 'expense')
-          .forEach((t: any) => {
-            const cat = t.category_id ? categoryMap.get(t.category_id) : null;
-            const amt = parseFloat(t.amount);
-            if (cat && cat.is_fixed_cost) {
-              fixedCostTotal += amt;
-            } else {
-              nonFixedExpenses += amt;
-            }
-          });
+    const openingBalanceVal = openingBalances[0]?.opening_balance ?? null;
 
-        setSidebarData({
-          openingBalance: openingBalanceVal,
-          incomeByCategory,
-          fixedCostTotal,
-          nonFixedExpenses,
-        });
-
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to load data — check connection and try again.');
-        setLoading(false);
+    const incomeMap = new Map<string, number>();
+    txResult.data
+      .filter((t: any) => t.type === 'income')
+      .forEach((t: any) => {
+        const catName = t.category_id ? (categoryMap.get(t.category_id)?.name ?? 'Inne') : 'Nieskategoryzowane';
+        const amt = parseFloat(t.amount);
+        incomeMap.set(catName, (incomeMap.get(catName) || 0) + amt);
       });
-  }, [yearMonth]);
+    const incomeByCategory = Array.from(incomeMap.entries()).map(([category, amount]) => ({
+      category,
+      amount,
+    }));
+
+    let fixedCostTotal = 0;
+    let nonFixedExpenses = 0;
+    txResult.data
+      .filter((t: any) => t.type === 'expense')
+      .forEach((t: any) => {
+        const cat = t.category_id ? categoryMap.get(t.category_id) : null;
+        const amt = parseFloat(t.amount);
+        if (cat && cat.is_fixed_cost) {
+          fixedCostTotal += amt;
+        } else {
+          nonFixedExpenses += amt;
+        }
+      });
+
+    return {
+      transactions: normalizedTx,
+      sidebarData: {
+        openingBalance: openingBalanceVal,
+        incomeByCategory,
+        fixedCostTotal,
+        nonFixedExpenses,
+      },
+      isTruncated: truncated,
+    };
+  }, [txResult, openingBalances, categories]);
+
+  const uniqueCategories = useMemo(() => {
+    return extractUniqueCategories(transactions);
+  }, [transactions]);
+
+  const filteredAndSortedTransactions = useMemo(() => {
+    return filterAndSortTransactions(transactions, { searchTerm, selectedType, selectedCategory, sortBy });
+  }, [transactions, searchTerm, selectedType, selectedCategory, sortBy]);
 
   const handleEdit = (id: string) => {
     window.history.pushState(null, '', `/transactions/${id}/edit`);
     window.dispatchEvent(new Event('popstate'));
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      setDeleteError(null);
-      await deleteTransaction(id);
-      setDeleteConfirmId(null);
-      const [txResult, freshCategories] = await Promise.all([
-        getTransactions({ date_from: dateFrom, date_to: dateTo, per_page: 500 }),
-        getCategories(),
-      ]);
-      const categoryMap = new Map<string, any>();
-      freshCategories.forEach((cat: any) => categoryMap.set(cat.id, cat));
-      const normalizedTx: NormalizedTransaction[] = txResult.data.map((t: any) => ({
-        id: t.id,
-        date: t.date,
-        description: t.description,
-        category_name: t.category_id ? (categoryMap.get(t.category_id)?.name ?? null) : null,
-        type: t.type,
-        amount: parseFloat(t.amount),
-      }));
-      setTransactions(normalizedTx);
-    } catch (err: any) {
-      setDeleteError(err.message);
-    }
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        setDeleteConfirmId(null);
+        setDeleteError(null);
+      },
+      onError: (err: any) => {
+        setDeleteError(err.message);
+      },
+    });
   };
 
-  if (loading) {
+  if (isPending) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        <p className="text-slate-400 mt-4 text-sm">Ładowanie szczegółów miesiąca...</p>
+      <div className="max-w-6xl mx-auto w-full px-4 space-y-6" aria-busy="true">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-full rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
+        ))}
       </div>
     );
   }
 
-  if (error) {
+  if (txError) {
     return (
       <div className="max-w-lg mx-auto p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
         Failed to load data — check connection and try again.
@@ -271,11 +239,9 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
       )}
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Main transaction list */}
         <div className="flex-1 w-full space-y-4">
           <h3 className="text-lg font-semibold text-slate-300 font-medium">Transakcje</h3>
-          
-          {/* Grid filter panel — always visible per D-01 */}
+
           <div className="p-4 bg-slate-800/40 border border-slate-800 rounded-xl space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-200">Filtruj Transakcje</span>
@@ -283,9 +249,8 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                 Pokazuje {filteredAndSortedTransactions.length} z {transactions?.length ?? 0} transakcji
               </span>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search */}
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,7 +266,6 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                 />
               </div>
 
-              {/* Type Select */}
               <div>
                 <select
                   value={selectedType}
@@ -315,7 +279,6 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                 </select>
               </div>
 
-              {/* Category Select */}
               <div>
                 <select
                   value={selectedCategory}
@@ -332,7 +295,6 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
                 </select>
               </div>
 
-              {/* Sort Select */}
               <div>
                 <select
                   value={sortBy}
@@ -389,7 +351,6 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
           )}
         </div>
 
-        {/* Sidebar */}
         <div className="w-full lg:w-80 shrink-0">
           <MonthSidebar
             openingBalance={sidebarData?.openingBalance ?? null}
@@ -399,7 +360,6 @@ export default function MonthlyPage({ yearMonth }: MonthlyPageProps) {
           />
         </div>
       </div>
-      {/* Delete confirmation dialog */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
