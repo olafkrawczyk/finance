@@ -41,7 +41,7 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
   };
 
   const data = useMemo(() => {
-    if (!summaryData) return null;
+    if (!summaryData || summaryData.length === 0) return null;
     return summaryData.map((r: any) => ({
       month: r.month,
       expenses: parseFloat(r.wydatki),
