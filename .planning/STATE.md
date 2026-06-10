@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Multi-Tenant Data Isolation
-status: completed
-last_updated: "2026-06-08T07:58:00.000Z"
-last_activity: 2026-06-08 -- Phase 10 executed
+milestone: v1.2
+milestone_name: Account Management & Starting Balances
+status: planning
+last_updated: "2026-06-10T20:45:00.000Z"
+last_activity: 2026-06-10 -- Phase 11 spec started
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 17
-  completed_plans: 16
-  percent: 94
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: Financial Planning App
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** Comprehensive financial planning with user-scoped data isolation
-**Current focus:** Phase 10 — completed
+**Current focus:** Phase 10 — completed (closed out 2026-06-10)
 
 ## Current Position
 
-Phase: 10 (frontend-cache-isolation) — COMPLETE
-Plan: 3 of 3
-Status: Phase 10 executed — 3/3 plans complete
-Last activity: 2026-06-08 -- Phase 10 executed
+Phase: 11 (account-crud-starting-balances) — SPEC PHASE
+Plan: 0 of 0
+Status: Specifying requirements for account CRUD and starting balance UI
+Last activity: 2026-06-10 -- Phase 11 spec started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -73,6 +73,9 @@ Progress: [██████████] 100%
 - **v1.1 (Phase 9)**: Migration 009 down SQL had invalid `ADD CONSTRAINT IF NOT EXISTS` syntax — fixed with idempotent `DO $$` blocks using `pg_constraint` checks
 - **v1.1 (Phase 9)**: `ALTER TABLE ... ADD COLUMN ... NOT NULL` fails on non-empty tables — manual restore pattern (add nullable → backfill → set NOT NULL → add FK) needed after down-up cycles
 - **v1.1 (Phase 9)**: Concurrent isolation tests use `Promise.all` with per-promise error handling; IDs captured from return values, not shared variables (avoids race condition)
+- **v1.1 (Phase 10)**: React Query per-user key scoping via `queryKeys` factory with `['user', userId]` prefix — all 11 query hooks and 9 mutation hooks use this pattern
+- **v1.1 (Phase 10)**: `CacheManager` clears all query caches on login/logout using `useRef` prevSession comparison (prevents effect loop)
+- **v1.1 (Phase 10)**: Skeleton-on-pending replaces spinner pattern across all pages — `isPending` gates initial load, `isFetching` allows background refetch while keeping existing data visible
 
 ### Pending Todos
 
@@ -81,7 +84,7 @@ None yet.
 ### Blockers/Concerns
 
 - **[RESOLVED] Phase 4 import worker**: PGMQ message payload structure resolved — Phase 8 implemented userId extraction from payload (+ ownership validation)
-- **Frontend query keys**: React Query key patterns need audit during Phase 10 planning — exact set of query keys not yet catalogued
+- **[RESOLVED] Frontend query keys**: React Query key factory implemented in Phase 10 — every key prefixed with `['user', userId]`, all resource groups covered
 
 ## Deferred Items
 
@@ -94,7 +97,15 @@ Items acknowledged and carried forward from v1.0 milestone close:
 | verification_gaps | Phase 03 — 03-VERIFICATION.md — human_needed | acknowledged | v1.0 |
 | todos | extract-llm-descriptions.md | pending | v1.0 |
 
+### Roadmap Evolution
+
+- Phase 10 added: Frontend Cache Isolation
+- Phase 10-01 executed: React Query infrastructure — client, provider, query keys, hooks, Skeleton
+- Phase 10-02 executed: MonthlyPage + DashboardPage converted to React Query
+- Phase 10-03 executed: Remaining 6 pages converted to React Query
+- Phase 10 closed out: All 3 SUMMARY.md files created retroactively (commits existed but lacked summaries)
+
 ## Session Continuity
 
-Last session: 2026-06-08T05:15:09.343Z
-Next phase: Phase 10 (Frontend Auth Wiring)
+Last session: 2026-06-10T20:30:00Z
+Next phase: Phase 11 (pending milestone completion or next milestone planning)
