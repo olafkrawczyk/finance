@@ -29,9 +29,10 @@ export default function BalanceChart({
   showNetWorth = true,
   onToggleNetWorth,
 }: BalanceChartProps) {
+  const safeData = data ?? [];
   const filteredData = showNetWorth
-    ? data.filter((d) => d.stan_konta !== null || d.wartosc_netto !== null)
-    : data.filter((d) => d.stan_konta !== null);
+    ? safeData.filter((d) => d.stan_konta !== null || d.wartosc_netto !== null)
+    : safeData.filter((d) => d.stan_konta !== null);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pl-PL', {
