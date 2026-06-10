@@ -57,8 +57,8 @@ Declared values (Tailwind v4 default 4px scale — confirmed adopted by codebase
 | Subheading (section labels, uppercase headings) | 12px (`text-xs`) | 600 (`font-semibold`) | 1.25 (`leading-tight`) |
 | Body (content, descriptions) | 14px (`text-sm`) | 400 (`font-normal`) | 1.5 (`leading-relaxed`) |
 | Label (form labels, table headers) | 12px (`text-xs`) | 600 (`font-semibold`) | 1.25 (`leading-tight`) |
-| UI (buttons, nav, table cells) | 14px (`text-sm`) | 600 (`font-semibold`) or 500 (`font-medium`) | 1.4 |
-| Metric (numbers, amounts) | 14px (`text-sm`) or 24px (`text-2xl`) | 700 (`font-bold`) or 600 (`font-semibold`) | 1.25 (`font-mono` for alignment) |
+| UI (buttons, nav, table cells) | 14px (`text-sm`) | 600 (`font-semibold`) | 1.4 |
+| Metric (numbers, amounts) | 14px (`text-sm`) or 24px (`text-2xl`) | 600 (`font-semibold`) — use color/size for differentiation instead of heavier weight | 1.25 (`font-mono` for alignment) |
 
 **Line height defaults:**
 - Body / paragraph text: `leading-relaxed` (1.5)
@@ -66,7 +66,7 @@ Declared values (Tailwind v4 default 4px scale — confirmed adopted by codebase
 - Labels / metadata: `leading-tight` (1.25)
 - Monospace numbers: `font-mono` (tabular figures, consistent width) — used in MonthSidebar opening balance display
 
-**Usage constraint:** Maximum 2 weights per element — `font-semibold` (600) for headings/buttons, `font-bold` (700) for emphasis on CTAs and numerical values. `font-medium` (500) appears in existing code for nav items and table cells — keep as-is. Do **not** introduce `font-light` (300) or `font-extrabold` (800).
+**Usage constraint:** Maximum 2 weights: `font-normal` (400) for body text, `font-semibold` (600) for all headings, buttons, labels, badges, and emphasis. Use color and size differentiation instead of heavier weights (700/`font-bold`). Do **not** introduce `font-light` (300), `font-medium` (500), `font-bold` (700), or `font-extrabold` (800).
 
 **Pre-populated from:** Phase 10 UI-SPEC typography table, confirmed via codebase scan.
 
@@ -100,6 +100,24 @@ Declared values (Tailwind v4 default 4px scale — confirmed adopted by codebase
 - **Not** for: backgrounds, dividers, cards, generic borders, loading spinners
 
 **Pre-populated from:** Phase 10 UI-SPEC color palette, confirmed via codebase scan of `App.tsx`, `AssetsPage.tsx`, `DashboardPage.tsx`, `BalanceChart.tsx`, `MonthSidebar.tsx`.
+
+---
+
+## Visuals
+
+### Focal Point
+
+The **account list table** in the left panel (2/3 width) is the primary visual anchor of the AccountPage. It dominates initial page weight and is the first element the user scans on page load. The create/edit form panel (right, 1/3 width, sticky) is secondary — a supporting tool invoked after the user has oriented via the table.
+
+**Design implications:**
+- Table receives the most careful typographic and spacing treatment (column alignment, zebra-free readability, hover states)
+- Empty state centers on the table area (not the full viewport)
+- Skeleton loading prioritizes the table layout (header + 3 skeleton rows)
+- Form panel is visually subordinate: muted card with smaller section heading, does not compete for attention
+
+### Layout Symmetry
+
+The 2-column layout (table 2/3, form 1/3) mirrors the AssetsPage pattern. Both columns share the same vertical rhythm: `space-y-6` between title block and content, `p-6` card padding, consistent border treatment (`border-slate-800`).
 
 ---
 
@@ -154,8 +172,8 @@ Pattern: Follows `AssetsPage.tsx` — standalone CRUD page with 2-column layout
 **Table row style:** `divide-y divide-slate-800/40`, `hover:bg-slate-900/30 transition-colors` — matches existing pattern.
 
 **Type column badge style:**
-- "Firmowe" (Business): `bg-blue-950/50 text-blue-400 border border-blue-900/60 text-xs px-2 py-0.5 rounded-full font-medium`
-- "Osobiste" (Personal): `bg-emerald-950/50 text-emerald-400 border border-emerald-900/60 text-xs px-2 py-0.5 rounded-full font-medium`
+- "Firmowe" (Business): `bg-blue-950/50 text-blue-400 border border-blue-900/60 text-xs px-2 py-0.5 rounded-full font-semibold`
+- "Osobiste" (Personal): `bg-emerald-950/50 text-emerald-400 border border-emerald-900/60 text-xs px-2 py-0.5 rounded-full font-semibold`
 
 ### New: `<AccountCreateForm>` (inline in AccountPage — right panel)
 
@@ -190,8 +208,8 @@ Triggered by "Edytuj" button on row. Pattern from AssetsPage inline edit:
 
 | Button | Style |
 |--------|-------|
-| Zapisz (save) | `px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 rounded text-xs text-white font-medium transition-colors` |
-| Anuluj (cancel) | `px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs text-slate-300 font-medium transition-colors` |
+| Zapisz (save) | `px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 rounded text-xs text-white font-semibold transition-colors` |
+| Anuluj (cancel) | `px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded text-xs text-slate-300 font-semibold transition-colors` |
 
 **Save progress:** Button text → "Zapisywanie..." while `savingId === asset.id`
 
