@@ -1,11 +1,14 @@
 -- Accounts: ING business + IPKO personal
 CREATE TABLE IF NOT EXISTS accounts (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       TEXT NOT NULL,
-  type       TEXT NOT NULL CHECK (type IN ('personal', 'business')),
-  currency   TEXT NOT NULL DEFAULT 'PLN',
-  user_id    TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                TEXT NOT NULL,
+  type                TEXT NOT NULL CHECK (type IN ('personal', 'business')),
+  currency            TEXT NOT NULL DEFAULT 'PLN',
+  starting_balance    NUMERIC(19,4) NOT NULL DEFAULT 0,
+  starting_balance_date DATE,
+  user_id             TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_accounts_user_id_name UNIQUE(user_id, name)
 );
 
 -- Categories: 25 total (arval replaces auto; D-07)
