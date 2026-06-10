@@ -25,9 +25,10 @@ accountsRoutes.post(
       const row = await createAccount(input.name, input.type, input.currency, input.starting_balance, input.starting_balance_date, user.id);
       return c.json({ data: row, error: null, meta: null }, 201);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Internal server error';
-      const status = message.includes('unique') || message.includes('duplicate') ? 409 : 500;
-      return c.json({ data: null, error: { message }, meta: null }, status);
+      const raw = err instanceof Error ? err.message : '';
+      const isUnique = raw.includes('unique') || raw.includes('duplicate');
+      const message = isUnique ? 'Konto o tej nazwie już istnieje' : raw || 'Internal server error';
+      return c.json({ data: null, error: { message }, meta: null }, isUnique ? 409 : 500);
     }
   }
 );
@@ -51,9 +52,10 @@ accountsRoutes.put(
       }
       return c.json({ data: row, error: null, meta: null }, 200);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Internal server error';
-      const status = message.includes('unique') || message.includes('duplicate') ? 409 : 500;
-      return c.json({ data: null, error: { message }, meta: null }, status);
+      const raw = err instanceof Error ? err.message : '';
+      const isUnique = raw.includes('unique') || raw.includes('duplicate');
+      const message = isUnique ? 'Konto o tej nazwie już istnieje' : raw || 'Internal server error';
+      return c.json({ data: null, error: { message }, meta: null }, isUnique ? 409 : 500);
     }
   }
 );
