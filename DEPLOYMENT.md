@@ -250,6 +250,73 @@ cloudflared tunnel --url http://localhost:3000
 
 Reference: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
 
+### Adding a New Hostname to an Existing Tunnel
+
+If cloudflared is already installed as a system service, **edit `/etc/cloudflared/config.yml`** — not `~/.cloudflared/config.yml`. The systemd service starts with `--config /etc/cloudflared/config.yml` and ignores the user-level file.
+
+```bash
+sudo nano /etc/cloudflared/config.yml   # add ingress rule here
+cloudflared tunnel route dns <tunnel-name> <new-hostname>
+sudo systemctl restart cloudflared
+```
+
+## Troubleshooting
+
+### Migration fails: `relation "X" does not exist`
+
+**Symptom:** The app container exits with a migration error referencing a table that should have been created by an earlier migration.
+
+**Cause:** node-pg-migrate SQL files require `-- Up Migration` / `-- Down Migration` as section separators (case-insensitive, matches `--[\\s-]*up\\s+migration`). Custom comment styles (e.g. `-- ↑↑↑ UP MIGRATION ↑↑↑`) are not recognised — the entire file including the DOWN `DROP` statements runs as the UP migration, dropping all tables immediately after creating them.
+
+**Fix:** Use the standard markers in all SQL migration files:
+```sql
+-- Up Migration
+... CREATE statements ...
+
+-- Down Migration
+... DROP statements ...
+```
+
+### Migration fails: `Not run migration NNN is preceding already run migration MMM`
+
+**Symptom:** After adding a new migration file, the app exits with an ordering error.
+
+**Cause:** node-pg-migrate enforces strict ordering — you cannot insert a migration with a number lower than the highest already-applied migration.
+
+**Fix:** Always number new migrations higher than the last existing file. If migrations 001–006 are applied, the next must be 007 or higher.
+
+### Workers fail: `schema "pgmq" does not exist`
+
+**Symptom:** The API server starts but the insights and import workers crash immediately.
+
+**Cause:** The PGMQ extension (`CREATE EXTENSION pgmq`) was never part of the migration history — development used `apply.ts` to set it up directly. A fresh production database has no `pgmq` schema.
+
+**Fix:** Ensure migration `007_setup_pgmq.sql` exists (already committed). It creates the extension and initialises the `analysis_queue` and `import_queue`. If it somehow gets skipped, run manually:
+```bash
+docker compose exec app bun run db:migrate
+```
+
+### App loads but has no styles (blank/unstyled page)
+
+**Symptom:** The page loads with correct HTML but no CSS styling; the network tab shows the CSS file returning 200 but `@tailwind utilities;` is present literally in the output.
+
+**Cause:** `postcss.config.js` was not copied into the Docker builder stage, so Vite skipped the `@tailwindcss/postcss` plugin and left the `@tailwind utilities;` directive uncompiled.
+
+**Fix:** The Dockerfile builder stage must include `postcss.config.js`:
+```dockerfile
+COPY vite.config.ts tsconfig.json postcss.config.js ./
+```
+This is already present in the current Dockerfile. If styles break again after adding a new build-config file, check that it is copied here.
+
+### Database reset (wipe all data)
+
+To start completely fresh (destroys all data):
+```bash
+docker compose down -v          # stops containers and removes pgdata volume
+docker compose up -d db         # wait for healthy
+docker compose up -d app        # migrations run automatically
+```
+
 ## Development vs. Production
 
 | Aspect | Development | Production |
