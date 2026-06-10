@@ -2,9 +2,26 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { requireAuth } from './auth';
 import { CreateAssetSchema, UpdateAssetSchema } from '../../application/schemas/assets';
-import { listAssets, createAsset, updateAsset, deleteAsset } from '../../core/assets/use-cases';
+import { listAssets, createAsset, getAsset, updateAsset, deleteAsset, listAssetSnapshots } from '../../core/assets/use-cases';
 
 export const assetsRoutes = new Hono();
+
+// GET /assets/:id/snapshots — asset value snapshot history
+assetsRoutes.get('/:id/snapshots', requireAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const id = c.req.param('id');
+    // Verify the asset belongs to the current user
+    const asset = await getAsset(id, user.id);
+    if (!asset) {
+      return c.json({ data: null, error: { message: 'Not found' }, meta: null }, 404);
+    }
+    const snapshots = await listAssetSnapshots(id);
+    return c.json({ data: snapshots, error: null, meta: { total: snapshots.length } });
+  } catch (err) {
+    return c.json({ data: null, error: { message: err instanceof Error ? err.message : 'Internal error' }, meta: null }, 500);
+  }
+});
 
 // GET /assets
 assetsRoutes.get('/', requireAuth, async (c) => {
