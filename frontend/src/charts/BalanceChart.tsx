@@ -62,14 +62,6 @@ export default function BalanceChart({
     );
   };
 
-  if (filteredData.length < 2) {
-    return (
-      <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
-        Brak wystarczającej ilości danych do wyświetlenia wykresu
-      </div>
-    );
-  }
-
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
@@ -86,49 +78,55 @@ export default function BalanceChart({
         </label>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart
-          data={filteredData}
-          onClick={(state) => {
-            if (state?.activeLabel && onMonthClick) {
-              onMonthClick(state.activeLabel);
-            }
-          }}
-          margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-        >
-          <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-          <XAxis dataKey="month" stroke="#94a3b8" />
-          <YAxis stroke="#94a3b8" tickFormatter={formatYAxis} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#0f172a',
-              borderColor: '#334155',
-              color: '#f8fafc',
+      {filteredData.length < 2 ? (
+        <div className="flex items-center justify-center h-[300px] border border-slate-800 rounded-xl bg-slate-900/40 text-slate-500 text-sm">
+          Brak wystarczającej ilości danych do wyświetlenia wykresu
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart
+            data={filteredData}
+            onClick={(state) => {
+              if (state?.activeLabel && onMonthClick) {
+                onMonthClick(state.activeLabel);
+              }
             }}
-            formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
-          />
-          <Legend content={renderLegend} />
-          <Line
-            type="monotone"
-            dataKey="stan_konta"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            name="Stan konta"
-            activeDot={{ r: 6 }}
-          />
-          {showNetWorth && (
+            margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+          >
+            <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+            <XAxis dataKey="month" stroke="#94a3b8" />
+            <YAxis stroke="#94a3b8" tickFormatter={formatYAxis} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#0f172a',
+                borderColor: '#334155',
+                color: '#f8fafc',
+              }}
+              formatter={(value: any, name: any) => [formatCurrency(Number(value)), name]}
+            />
+            <Legend content={renderLegend} />
             <Line
               type="monotone"
-              dataKey="wartosc_netto"
-              stroke="#a855f7"
+              dataKey="stan_konta"
+              stroke="#3b82f6"
               strokeWidth={2}
-              name="Wartość netto"
-              dot={false}
-              connectNulls={false}
+              name="Stan konta"
+              activeDot={{ r: 6 }}
             />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+            {showNetWorth && (
+              <Line
+                type="monotone"
+                dataKey="wartosc_netto"
+                stroke="#a855f7"
+                strokeWidth={2}
+                name="Wartość netto"
+                dot={false}
+                connectNulls={false}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
