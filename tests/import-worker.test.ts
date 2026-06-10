@@ -219,11 +219,9 @@ describe('Import Worker Multi-User Isolation — D-08, D-09, D-11', () => {
   });
 
   afterAll(async () => {
-    // Clean up User B's data
-    await sql`DELETE FROM transactions WHERE account_id = ${userBAccountId}`;
-    await sql`DELETE FROM import_jobs WHERE user_id = ${userBId}`;
-    await sql`DELETE FROM accounts WHERE id = ${userBAccountId}`;
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM "user" WHERE id = ${userBId}`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
   });
 
   // D-08: Correct user tagging — processJob inserts transactions with correct user_id
@@ -253,9 +251,10 @@ describe('Import Worker Multi-User Isolation — D-08, D-09, D-11', () => {
     `;
     expect(txsWithUser.every(t => t.user_id === userId)).toBe(true);
 
-    // Clean up
     await sql`SELECT pgmq.archive('import_queue', ${messages[0].msg_id}::bigint)`;
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM transactions WHERE description LIKE 'IsoT%'`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM import_jobs WHERE id = ${job_id}`;
   });
 
@@ -356,7 +355,8 @@ describe('Import Worker Multi-User Isolation — D-08, D-09, D-11', () => {
     for (const r of results) {
       await sql`DELETE FROM import_jobs WHERE id = ${r.payload.job_id}`;
     }
-    // Mock transactions have descriptions "Mock Transaction N"
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM transactions WHERE description LIKE 'Mock Transaction%' AND created_at > now() - interval '1 minute'`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
   });
 });

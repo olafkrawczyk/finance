@@ -22,16 +22,22 @@ let testUserId: string;
  */
 async function restoreUserIdColumns(userId: string): Promise<void> {
   for (const table of DOMAIN_TABLES) {
-    // Check if column is already present
     const cols = await sql`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = ${table} AND column_name = 'user_id'
     `;
     if (cols.length > 0) continue;
 
-    // Add as nullable, backfill, make NOT NULL, attach FK
     await sql.unsafe(`ALTER TABLE "${table}" ADD COLUMN user_id TEXT`);
+
+    if (table === 'transactions') {
+      await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_update`;
+    }
     await sql.unsafe(`UPDATE "${table}" SET user_id = '${userId}' WHERE user_id IS NULL`);
+    if (table === 'transactions') {
+      await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_update`;
+    }
+
     await sql.unsafe(`ALTER TABLE "${table}" ALTER COLUMN user_id SET NOT NULL`);
     await sql.unsafe(
       `ALTER TABLE "${table}" ADD CONSTRAINT ${table}_user_id_fkey ` +
@@ -45,10 +51,10 @@ async function restoreUserIdColumns(userId: string): Promise<void> {
  * don't fail when restoreUserIdColumns adds REFERENCES "user"(id).
  */
 async function ensureBackfillUser(userId: string): Promise<void> {
-  await sql`DELETE FROM "user" WHERE id = ${userId}`;
   await sql`
     INSERT INTO "user" (id, name, email, "emailVerified")
     VALUES (${userId}, 'Rollback Backfill', 'rollback-backfill@example.com', true)
+    ON CONFLICT (id) DO NOTHING
   `;
 }
 
@@ -89,11 +95,10 @@ beforeAll(async () => {
     log: () => {},
   });
 
-  // Create a test user for FK constraint satisfaction
-  await sql`DELETE FROM "user" WHERE id = 'rollback-test-user'`;
   const [user] = await sql`
     INSERT INTO "user" (id, name, email, "emailVerified")
     VALUES ('rollback-test-user', 'Rollback Test User', 'rollback-test@example.com', true)
+    ON CONFLICT (id) DO UPDATE SET name = 'Rollback Test User'
     RETURNING id
   `;
   testUserId = user.id;
@@ -121,9 +126,18 @@ afterAll(async () => {
     log: () => {},
   });
 
-  // Clean up test users
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_update`;
+  await sql`DELETE FROM transactions WHERE user_id = 'rollback-test-user'`;
+  await sql`DELETE FROM accounts WHERE user_id = 'rollback-test-user'`;
+  await sql`DELETE FROM categories WHERE user_id = 'rollback-test-user'`;
+  await sql`DELETE FROM monthly_opening_balances WHERE user_id = 'rollback-test-user'`;
+  await sql`DELETE FROM assets WHERE user_id = 'rollback-test-user'`;
+  await sql`DELETE FROM import_jobs WHERE user_id = 'rollback-test-user'`;
   await sql`DELETE FROM "user" WHERE id = 'rollback-test-user'`;
   await sql`DELETE FROM "user" WHERE id = 'rollback-backfill'`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_update`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
 });
 
 // ── D-14: Assert up migration state ──

@@ -18,8 +18,9 @@ let userAAssetId: string;
 let userBAccountId: string;
 
 beforeAll(async () => {
-  // Clean up any existing test users from prior runs
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
   await sql`DELETE FROM "user" WHERE email IN (${USER_A_EMAIL}, ${USER_B_EMAIL})`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
 
   // Create User A via signUpEmail — triggers signup hook, creating default categories + accounts
   const resA = await auth.api.signUpEmail({
@@ -68,7 +69,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
   await sql`DELETE FROM "user" WHERE email IN (${USER_A_EMAIL}, ${USER_B_EMAIL})`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
 });
 
 // ── Group 1: User A creates resources (SCOPE-02) ──────────────────────────
@@ -486,9 +489,6 @@ describe('Group 6: Pagination and Offset — D-02', () => {
     expect(hasUserAPageData).toBe(false);
   });
 
-  afterAll(async () => {
-    await sql`DELETE FROM transactions WHERE description LIKE 'Page test A %'`;
-  });
 });
 
 // ── Group 7: Filtered Query Isolation — D-03 ───────────────────────────────
@@ -583,10 +583,6 @@ describe('Group 7: Filtered Query Isolation — D-03', () => {
     expect(hasUserBData).toBe(false);
   });
 
-  afterAll(async () => {
-    await sql`DELETE FROM transactions WHERE description LIKE 'Filtered test %'`;
-    await sql`DELETE FROM transactions WHERE description = 'User B filtered data'`;
-  });
 });
 
 // ── Group 8: Bulk/Multi-Create User Tagging — D-04 ─────────────────────────
@@ -676,7 +672,4 @@ describe('Group 8: Bulk/Multi-Create User Tagging — D-04', () => {
     }
   });
 
-  afterAll(async () => {
-    await sql`DELETE FROM transactions WHERE description LIKE 'Bulk test %'`;
-  });
 });

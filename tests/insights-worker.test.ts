@@ -287,12 +287,9 @@ describe('Insights Worker Per-User Isolation — D-10', () => {
   });
 
   afterAll(async () => {
-    // Clean up User B's data
-    await sql`DELETE FROM insights WHERE user_id = ${userBId}`;
-    await sql`DELETE FROM transactions WHERE user_id = ${userBId}`;
-    await sql`DELETE FROM categories WHERE id = ${userBCategoryId}`;
-    await sql`DELETE FROM accounts WHERE id = ${userBAccountId}`;
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM "user" WHERE id = ${userBId}`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
   });
 
   // D-10: Insights worker scoped window — processAnalysisMessage creates insights only for correct user
@@ -331,9 +328,10 @@ describe('Insights Worker Per-User Isolation — D-10', () => {
     // User B's insights should be empty (User B was never analyzed)
     expect(bInsights).toHaveLength(0);
 
-    // Clean up test transactions
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM transactions WHERE description = 'User B exclusive'`;
     await sql`DELETE FROM transactions WHERE description = 'User A extra'`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM insights WHERE user_id = ${userId} AND title LIKE 'Spending alert%'`;
   });
 
@@ -366,7 +364,8 @@ describe('Insights Worker Per-User Isolation — D-10', () => {
     const bHasOther = bWindow.some(t => t.description === 'User A window test');
     expect(bHasOther).toBe(false);
 
-    // Clean up
+    await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
     await sql`DELETE FROM transactions WHERE description IN ('User A window test', 'User B window test')`;
+    await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
   });
 });

@@ -16,8 +16,9 @@ let userAId: string;
 let userBId: string;
 
 beforeAll(async () => {
-  // Clean up prior test users
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
   await sql`DELETE FROM "user" WHERE email IN (${USER_A_EMAIL}, ${USER_B_EMAIL})`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
 
   // Create User A — signup hook creates default categories + accounts
   const resA = await auth.api.signUpEmail({
@@ -55,11 +56,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up concurrently created transactions first
-  await sql`DELETE FROM transactions WHERE description LIKE 'Concurrent A %'`;
-  await sql`DELETE FROM transactions WHERE description LIKE 'Concurrent B %'`;
-  // Then delete test users (cascades to their data)
+  await sql`ALTER TABLE transactions DISABLE TRIGGER trg_transactions_no_delete`;
   await sql`DELETE FROM "user" WHERE email IN (${USER_A_EMAIL}, ${USER_B_EMAIL})`;
+  await sql`ALTER TABLE transactions ENABLE TRIGGER trg_transactions_no_delete`;
 });
 
 // ── Concurrent User Isolation (TEST-04, D-05, D-06) ──
