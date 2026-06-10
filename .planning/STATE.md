@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Account Management & Starting Balances
-status: Specifying requirements for account CRUD and starting balance UI
-last_updated: "2026-06-10T18:53:10.675Z"
-last_activity: 2026-06-10 -- Phase 11 spec started
+status: executing
+last_updated: "2026-06-10T21:19:36.215Z"
+last_activity: 2026-06-10 -- Phase 11 execution started
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 16
+  total_plans: 21
+  completed_plans: 18
   percent: 67
 ---
 
@@ -20,16 +20,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-07)
 
 **Core value:** Comprehensive financial planning with user-scoped data isolation
-**Current focus:** Phase 10 — completed (closed out 2026-06-10)
+**Current focus:** Phase 11 — account-crud-starting-balances
 
 ## Current Position
 
-Phase: 11 (account-crud-starting-balances) — SPEC PHASE
-Plan: 0 of 0
-Status: Specifying requirements for account CRUD and starting balance UI
-Last activity: 2026-06-10 -- Phase 11 spec started
+Phase: 11 (account-crud-starting-balances) — EXECUTING
+Plan: 3 of 4
+Status: Ready to execute
+Last activity: 2026-06-10 -- Phase 11 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 76%
+
+## Phase 11 Plans
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| 11-01 | 1 | Backend Account CRUD + Migrations — DB migrations, use-cases, routes, schemas, delete guard |
+| 11-02 | 2 | Frontend Account Management UI — AccountPage, TypedDeleteConfirmModal, API/hooks, route/nav |
+| 11-03 | 2 | Asset Snapshots + Balance Computation — snapshots table, auto-snapshot on value change, getMonthlySummary rewrite |
+| 11-04 | 3 | Combined Net Worth Chart — BalanceChart purple line, Legend, toggle, DashboardPage state |
 
 ## Performance Metrics
 
@@ -56,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | 10. Frontend Cache Isolation | 3 | ~7 min | ~2.3 min |
 
 *Updated after each plan completion*
+| Phase 11 P02 | 8 | 5 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -76,6 +86,7 @@ Progress: [░░░░░░░░░░] 0%
 - **v1.1 (Phase 10)**: React Query per-user key scoping via `queryKeys` factory with `['user', userId]` prefix — all 11 query hooks and 9 mutation hooks use this pattern
 - **v1.1 (Phase 10)**: `CacheManager` clears all query caches on login/logout using `useRef` prevSession comparison (prevents effect loop)
 - **v1.1 (Phase 10)**: Skeleton-on-pending replaces spinner pattern across all pages — `isPending` gates initial load, `isFetching` allows background refetch while keeping existing data visible
+- [Phase ?]: AccountPage uses direct useMutation (following AssetsPage pattern) alongside hook wrappers in hooks.ts for external consumers
 
 ### Pending Todos
 
@@ -107,5 +118,5 @@ Items acknowledged and carried forward from v1.0 milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-10T18:53:10.661Z
+Last session: 2026-06-10T21:19:36.209Z
 Next phase: Phase 11 (pending milestone completion or next milestone planning)

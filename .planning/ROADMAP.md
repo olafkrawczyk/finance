@@ -153,7 +153,14 @@ Plans:
   4. The balance-over-time chart uses per-account starting balances (not a single global value) so the net worth line is accurate
   5. Assets are reflected in the net worth computation on the chart (or explicitly scoped out with reasoning)
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+- [ ] `11-01-PLAN.md` — Backend Account CRUD + Migrations: migration 012 (starting_balance columns), migration 013 (UNIQUE user_id, name), createAccount/updateAccount/deleteAccount use-cases, POST/PUT/DELETE routes, Zod schemas, delete guard
+- [ ] `11-02-PLAN.md` — Frontend Account Management UI: AccountPage.tsx (list, create form, inline edit), TypedDeleteConfirmModal, API functions + query hooks + route + nav button
+- [ ] `11-03-PLAN.md` — Asset Snapshots + Balance Computation: migration 014 (asset_value_snapshots table), snapshot auto-creation on asset value change, getMonthlySummary per-account starting balance aggregation + combined net worth (wartosc_netto) with forward-fill
+- [ ] `11-04-PLAN.md` — Combined Net Worth Chart: BalanceChart purple net worth line + Legend + toggle, DashboardPage toggle state
 
 ## Progress
 
@@ -174,7 +181,7 @@ Plans:
 | 8. Worker Isolation | v1.1 | 3/3 | Complete | 2026-06-07 |
 | 9. Testing & Verification | v1.1 | 4/4 | Complete | 2026-06-07 |
 | 10. Frontend Cache Isolation | v1.1 | 3/3 | Complete   | 2026-06-08 |
-| 11. Account CRUD & Starting Balances | v1.2 | 0/0 | Planned   | — |
+| 11. Account CRUD & Starting Balances | v1.2 | 2/4 | In Progress|  |
 
 ## Archive
 
