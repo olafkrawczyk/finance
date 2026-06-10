@@ -49,4 +49,5 @@ export interface MonthlySummaryRow {
   zaoszczedzone: string               // przychody - wydatki (computed)
   zaoszczedzone_log: string           // log10(zaoszczedzone) if > 0, else "0" (computed)
   stan_konta: string | null           // opening_balance + cumulative net (null if no opening balance set)
+  wartosc_netto?: string              // stan_konta + forward-filled asset values from snapshots
 }
