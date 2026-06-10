@@ -235,4 +235,17 @@ CREATE TRIGGER trg_assets_updated_at
   BEFORE UPDATE ON assets FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Asset value snapshots: append-only history for net worth computation (D-09)
+CREATE TABLE IF NOT EXISTS asset_value_snapshots (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  asset_id   UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  value      NUMERIC(19,4) NOT NULL,
+  date       DATE NOT NULL,
+  notes      TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_value_snapshots_asset_id_date
+  ON asset_value_snapshots(asset_id, date);
+
 
