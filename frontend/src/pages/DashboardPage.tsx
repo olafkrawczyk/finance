@@ -47,6 +47,8 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
       expenses: parseFloat(r.wydatki),
       income: parseFloat(r.przychody),
       balance: r.stan_konta != null ? parseFloat(r.stan_konta) : null,
+      stan_konta: r.stan_konta != null ? parseFloat(r.stan_konta) : null,
+      wartosc_netto: r.wartosc_netto != null ? parseFloat(r.wartosc_netto) : null,
       expensesWithoutFixed: parseFloat(r.wydatki_bez_stalych),
       savings: parseFloat(r.zaoszczedzone),
       savingsLog: parseFloat(r.zaoszczedzone_log),
