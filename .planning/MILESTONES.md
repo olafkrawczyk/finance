@@ -1,5 +1,34 @@
 # Milestones
 
+## v1.2 Account Management & Starting Balances (Shipped: 2026-06-10)
+
+**Phases completed:** 7 phases, 20 plans, 40 tasks
+
+**Key accomplishments:**
+
+- Three SQL migration files adding user_id columns, per-user UNIQUE constraints, and index documentation to all 6 domain tables using node-pg-migrate marker-based SQL pattern
+- schema.sql updated with user_id columns on 6 domain tables, per-user composite UNIQUE constraints, migration integration tests, and computeImportHash accountId inclusion
+- All 16 ledger/assets/import use-case functions scoped with userId parameter + new reference module with scoped listAccounts/listCategories + assignCategory extracted from inline SQL
+- PASSED
+- PASSED
+- Multi-user isolation matrix (27 tests) proving User B gets 404 on all User A resources + signup hook seeding tests (10 tests) verifying 25 categories and 2 accounts per new user + DELETE ownership verification fix
+- Import worker (CSV + Excel migration) now extracts, validates, and enforces user_id throughout — tagging all inserted transactions, scoping all queries, and validating account ownership via PGMQ payload extraction
+- Per-user SQL scoping in insights queries, createTransaction auto-trigger payload, and ImportJob entity type
+- Import worker and insights worker integration tests updated to pass userId/user_id parameters matching per-user data isolation — both test files run clean with 0 failures
+- Extended multi-user isolation test matrix with pagination edge cases, filtered query isolation, and bulk-create user tagging verification
+- Worker isolation tests: import worker multi-user scenarios (3 tests) and insights worker per-user scoping regression (2 tests)
+- Concurrent multi-user isolation test proving two users inserting transactions simultaneously via parallel POST requests maintain full data isolation — no cross-user leakage, correct row counts, and cross-user 404 after concurrent inserts
+- Standalone migration rollback test (D-13 through D-17) verifying schema up/down state via information_schema assertions, with lifecycle-aware state restoration
+- React Query infrastructure layer — per-user cache isolation with queryClient singleton, type-safe key factory, CacheManager for auth-change clearance, all query/mutation hooks, and Skeleton component
+- MonthlyPage and DashboardPage converted to React Query hooks with skeleton loading layouts — eliminating manual useState/useEffect data fetching from both pages
+- All remaining 6 pages/components converted to React Query hooks — completing the frontend-wide per-user cache isolation migration
+- DB migrations for starting balance columns and unique name constraint, Zod validation schemas, use-cases (create, update, delete), and API routes (POST/PUT/DELETE) with delete transaction guard. Provides the backend foundation for the frontend account management page.
+- 1. [Rule 2 - Missing critical functionality] Added `getAccount` API function
+- Asset value history snapshots with per-account starting balance aggregation for net worth computation, including migration, auto-snapshot on update, snapshot read endpoint, and rewritten getMonthlySummary
+- `frontend/src/charts/BalanceChart.tsx` (134 lines, +57 net)
+
+---
+
 ## v1.0 MVP (Shipped: 2026-06-07)
 
 **Phases completed:** 11 phases, 37 plans, 88 tasks
