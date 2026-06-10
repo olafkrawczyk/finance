@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useMonthlySummary, useAssets, useInsightsForecast } from '../lib/query/hooks';
 import Skeleton from '../components/Skeleton';
 import { linearRegression } from '../lib/linearRegression';
@@ -18,6 +18,12 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
   const { data: summaryData, isPending, error } = useMonthlySummary();
   const { data: assetsData } = useAssets();
   const { data: forecastData } = useInsightsForecast();
+
+  const [showNetWorth, setShowNetWorth] = useState(true);
+
+  const handleToggleNetWorth = useCallback(() => {
+    setShowNetWorth((prev) => !prev);
+  }, []);
 
   const formatPln = (val: number) => {
     return new Intl.NumberFormat('pl-PL', {
@@ -238,7 +244,12 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
           <h3 className="text-sm font-semibold text-slate-400 mb-4 uppercase tracking-wider">
             Stan konta z upływem czasu
           </h3>
-          <BalanceChart data={data} onMonthClick={onMonthClick} />
+          <BalanceChart
+            data={data}
+            onMonthClick={onMonthClick}
+            showNetWorth={showNetWorth}
+            onToggleNetWorth={handleToggleNetWorth}
+          />
         </div>
 
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
