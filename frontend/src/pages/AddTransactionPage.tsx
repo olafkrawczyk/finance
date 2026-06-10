@@ -39,6 +39,14 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
   const categories = useMemo(() => categoryRows ?? [], [categoryRows]);
   const accounts = useMemo(() => accountRows ?? [], [accountRows]);
 
+  const [accountId, setAccountId] = useState<string>('');
+
+  useEffect(() => {
+    if (accounts.length > 0 && !accountId) {
+      setAccountId(accounts[0].id);
+    }
+  }, [accounts, accountId]);
+
   useEffect(() => {
     if (categories.length > 0 && !categoryId) {
       setCategoryId(categories[0].id);
@@ -48,6 +56,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
   useEffect(() => {
     if (!editTx) return;
     setType(editTx.type);
+    setAccountId(editTx.account_id || '');
     setCategoryId(editTx.category_id || '');
     setAmount(editTx.amount);
     setDescription(editTx.description || '');
@@ -71,9 +80,8 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const defaultAccountId = accounts[0]?.id;
-    if (!defaultAccountId) {
-      setError('Brak dostępnych kont do przypisania transakcji.');
+    if (!accountId) {
+      setError('Proszę wybrać konto.');
       return;
     }
     if (!categoryId) {
@@ -99,7 +107,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         await updateMutation.mutateAsync({
           id: transactionId,
           data: {
-            account_id: defaultAccountId,
+            account_id: accountId,
             category_id: categoryId,
             type,
             amount: formattedAmount,
@@ -109,7 +117,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
         });
       } else {
         await createMutation.mutateAsync({
-          account_id: defaultAccountId,
+          account_id: accountId,
           category_id: categoryId,
           type,
           amount: formattedAmount,
@@ -133,7 +141,7 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
     }
   };
 
-  const isFormValid = categoryId && amount && parseFloat(amount) > 0 && date && accounts.length > 0;
+  const isFormValid = accountId && categoryId && amount && parseFloat(amount) > 0 && date;
 
   if (isEditLoading) {
     return (
@@ -176,6 +184,25 @@ export default function AddTransactionPage({ onSuccess, transactionId }: AddTran
             <option value="expense">Wydatek</option>
             <option value="income">Przychód</option>
             <option value="transfer">Przelew</option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="account-select" className="block text-slate-300 text-sm font-semibold mb-2">
+            Konto
+          </label>
+          <select
+            id="account-select"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-sm"
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+          >
+            {accounts.length === 0 && <option value="">Brak kont</option>}
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} ({a.currency})
+              </option>
+            ))}
           </select>
         </div>
 
