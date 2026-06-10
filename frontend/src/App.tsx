@@ -8,6 +8,7 @@ import CategorizePage from './pages/CategorizePage';
 import AddTransactionPage from './pages/AddTransactionPage';
 import InsightsPage from './pages/InsightsPage';
 import AssetsPage from './pages/AssetsPage';
+import AccountPage from './pages/AccountPage';
 import MigrationPage from './pages/MigrationPage';
 import { authClient } from './lib/auth-client';
 import LoginPage from './pages/LoginPage';
@@ -44,6 +45,10 @@ export default function App() {
 
     if (currentPath === '/assets') {
       return <AssetsPage />;
+    }
+
+    if (currentPath === '/accounts') {
+      return <AccountPage />;
     }
 
     if (currentPath === '/summary') {
@@ -164,6 +169,16 @@ export default function App() {
                 }`}
               >
                 Aktywa
+              </button>
+              <button
+                onClick={() => navigateTo('/accounts')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPath === '/accounts'
+                    ? 'bg-slate-900 text-blue-400'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Konta
               </button>
               <button
                 onClick={() => navigateTo('/summary')}
