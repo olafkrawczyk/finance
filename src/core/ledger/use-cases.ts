@@ -106,8 +106,11 @@ export async function getMonthlySummary(userId: string): Promise<MonthlySummaryR
       if (sb <= 0) continue;
 
       // D-05: null starting_balance_date → effective from earliest transaction month
-      const effectiveFrom = account.starting_balance_date
-        ? account.starting_balance_date.substring(0, 7) // "YYYY-MM-DD" → "YYYY-MM"
+      const dateStr = account.starting_balance_date instanceof Date
+        ? account.starting_balance_date.toISOString().split('T')[0]
+        : String(account.starting_balance_date);
+      const effectiveFrom = dateStr
+        ? dateStr.substring(0, 7) // "YYYY-MM-DD" → "YYYY-MM"
         : earliestMonth;
 
       if (!effectiveFrom) continue;
