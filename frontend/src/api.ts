@@ -376,6 +376,7 @@ export async function deleteAccount(id: string) {
     const errorJson = await res.json().catch(() => ({}));
     throw new Error(errorJson.error?.message || `Failed to delete account: ${res.statusText}`);
   }
+  if (res.status === 204) return null;
   const json = await res.json();
   return json.data;
 }
