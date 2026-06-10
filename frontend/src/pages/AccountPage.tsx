@@ -26,6 +26,17 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
+function toDateInputValue(dateStr: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  } catch {
+    return dateStr;
+  }
+}
+
 function todayStr(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -162,7 +173,7 @@ export default function AccountPage() {
     setEditingId(account.id);
     setEditingName(account.name);
     setEditingBalance(String(account.starting_balance));
-    setEditingBalanceDate(account.starting_balance_date || '');
+    setEditingBalanceDate(toDateInputValue(account.starting_balance_date));
     setError(null);
     setSuccess(null);
   };
