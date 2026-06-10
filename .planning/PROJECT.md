@@ -11,14 +11,15 @@ A comprehensive financial planning application with both backend and frontend co
 - **AI Integration:** OpenRouter API
 - **Auth:** Better Auth (email/password + Google/GitHub OAuth)
 
-## Current Milestone: v1.1 Multi-Tenant Data Isolation
+## Current Milestone: v1.2 Account Management & Starting Balances
 
-**Goal:** User-scoped data isolation — each user sees only their own accounts, categories, and transactions.
+**Goal:** Users can manage their accounts (create, rename, delete) and set starting balances per account. The balance-over-time charts reflect accurate baselines including per-account starting balances.
 
 **Target features:**
-- Basic multi-tenant data isolation (no sharing/permissions/RBAC)
-- User-scoped accounts, categories, and transactions
-- Existing users unaffected, new users start clean
+- Account CRUD from the UI (create, rename, delete)
+- Per-account starting balance setting
+- Balance-over-time chart uses per-account starting balances
+- Asset integration into net worth computation (or explicit scoping decision)
 
 ---
 
@@ -39,7 +40,10 @@ Shipped with 10 phases, 37 plans across a full financial tracking application:
 - ✓ Docker deployment with automated DB migrations — v1.0
 
 ### Active
-- [ ] Multi-tenant data isolation (user-scoped categories, accounts, transactions) — v1.1
+- [x] Multi-tenant data isolation (user-scoped categories, accounts, transactions) — v1.1 (completed)
+- [ ] Account CRUD UI (create, rename, delete accounts) — v1.2
+- [ ] Per-account starting balance setting — v1.2
+- [ ] Asset integration into net worth chart — v1.2
 
 ### Out of Scope
 - Mobile app — web-first approach
