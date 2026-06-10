@@ -318,3 +318,54 @@ export async function deleteAsset(id: string) {
   const json = await res.json();
   return json.data;
 }
+
+export async function createAccount(data: {
+  name: string;
+  type?: string;
+  currency?: string;
+  starting_balance?: string;
+  starting_balance_date?: string | null;
+}) {
+  const res = await apiFetch('/accounts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to create account: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function updateAccount(id: string, data: {
+  name?: string;
+  type?: string;
+  starting_balance?: string;
+  starting_balance_date?: string | null;
+}) {
+  const res = await apiFetch(`/accounts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to update account: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function deleteAccount(id: string) {
+  const res = await apiFetch(`/accounts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to delete account: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
