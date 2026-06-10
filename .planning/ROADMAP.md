@@ -181,7 +181,7 @@ Plans:
 | 8. Worker Isolation | v1.1 | 3/3 | Complete | 2026-06-07 |
 | 9. Testing & Verification | v1.1 | 4/4 | Complete | 2026-06-07 |
 | 10. Frontend Cache Isolation | v1.1 | 3/3 | Complete   | 2026-06-08 |
-| 11. Account CRUD & Starting Balances | v1.2 | 2/4 | In Progress|  |
+| 11. Account CRUD & Starting Balances | v1.2 | 3/4 | In Progress|  |
 
 ## Archive
 
