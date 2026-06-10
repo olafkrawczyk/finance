@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import { ledgerRoutes } from './src/interface-adapters/api/ledger';
 import { openingBalanceRoutes } from './src/interface-adapters/api/opening-balance';
-import { referenceRoutes } from './src/interface-adapters/api/reference';
+import { referenceRoutes, accountsRoutes } from './src/interface-adapters/api/reference';
 import { healthDb } from './src/infrastructure/db/health';
 
 import { cors } from 'hono/cors';
@@ -56,6 +56,7 @@ app.route('/import', importRoutes);
 app.route('/insights', insightsRoutes);
 app.route('/assets', assetsRoutes);
 app.route('/api/migration', migrationRoutes);
+app.route('/accounts', accountsRoutes);
 app.route('/', referenceRoutes);
 
 // Production static serving — serves Vite-built frontend/dist/
