@@ -2,34 +2,32 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Account Management & Starting Balances
-status: verifying
-last_updated: "2026-06-10T21:30:00.000Z"
-last_activity: 2026-06-10 -- Phase 11 execution completed
+status: Awaiting next milestone
+last_updated: "2026-06-10T22:30:01.446Z"
+last_activity: 2026-06-10 — Milestone v1.2 completed and archived
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 22
+  completed_phases: 5
+  total_plans: 21
   completed_plans: 20
-  percent: 69
+  percent: 83
 ---
 
 # Project State: Financial Planning App
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-07)
+See: .planning/PROJECT.md (updated 2026-06-10 — v1.2 archived)
 
 **Core value:** Comprehensive financial planning with user-scoped data isolation
-**Current focus:** Phase 11 — account-crud-starting-balances
+**Current focus:** Milestone v1.2 complete — ready for next milestone
 
 ## Current Position
 
-Phase: 11 (account-crud-starting-balances) — COMPLETE
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-06-10 -- Phase 11 execution completed
-
-Progress: [████████░░] 76%
+Phase: Milestone v1.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-10 — Milestone v1.2 completed and archived
 
 ## Phase 11 Plans
 
@@ -109,6 +107,15 @@ Items acknowledged and carried forward from v1.0 milestone close:
 | verification_gaps | Phase 03 — 03-VERIFICATION.md — human_needed | acknowledged | v1.0 |
 | todos | extract-llm-descriptions.md | pending | v1.0 |
 
+Items acknowledged and deferred at v1.2 milestone close on 2026-06-10:
+
+| Category | Item | Status |
+|----------|------|--------|
+| todos | auth-guard-and-redirect.md | high |
+| todos | auth-login-signup-page.md | high |
+| todos | auth-logout-button.md | medium |
+| todos | dockerize-app.md | high |
+
 ### Roadmap Evolution
 
 - Phase 10 added: Frontend Cache Isolation
@@ -122,3 +129,7 @@ Items acknowledged and carried forward from v1.0 milestone close:
 
 Last session: 2026-06-10T21:26:29.570Z
 Next phase: Phase 11 (pending milestone completion or next milestone planning)
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

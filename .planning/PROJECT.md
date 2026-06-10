@@ -11,21 +11,11 @@ A comprehensive financial planning application with both backend and frontend co
 - **AI Integration:** OpenRouter API
 - **Auth:** Better Auth (email/password + Google/GitHub OAuth)
 
-## Current Milestone: v1.2 Account Management & Starting Balances
-
-**Goal:** Users can manage their accounts (create, rename, delete) and set starting balances per account. The balance-over-time charts reflect accurate baselines including per-account starting balances.
-
-**Target features:**
-- Account CRUD from the UI (create, rename, delete)
-- Per-account starting balance setting
-- Balance-over-time chart uses per-account starting balances
-- Asset integration into net worth computation (or explicit scoping decision)
-
 ---
 
-## Current State (v1.0 — Shipped 2026-06-07)
+## Current State (v1.2 — Shipped 2026-06-10)
 
-Shipped with 10 phases, 37 plans across a full financial tracking application:
+Shipped with 11 phases, 41 plans across a full financial tracking application with account management and net worth tracking.
 
 ### Validated
 - ✓ Immutable ledger with single-entry accounting — v1.0
@@ -38,12 +28,13 @@ Shipped with 10 phases, 37 plans across a full financial tracking application:
 - ✓ Transaction filters (search, type, category, sort) — v1.0
 - ✓ User authentication (email/password + OAuth) — v1.0
 - ✓ Docker deployment with automated DB migrations — v1.0
+- ✓ Multi-tenant data isolation (user-scoped categories, accounts, transactions) — v1.1
+- ✓ Account CRUD UI (create, rename, delete accounts) — v1.2
+- ✓ Per-account starting balance setting — v1.2
+- ✓ Asset integration into net worth chart (combined net worth line with toggle) — v1.2
 
 ### Active
-- [x] Multi-tenant data isolation (user-scoped categories, accounts, transactions) — v1.1 (completed)
-- [ ] Account CRUD UI (create, rename, delete accounts) — v1.2
-- [ ] Per-account starting balance setting — v1.2
-- [ ] Asset integration into net worth chart — v1.2
+*(No active requirements — next milestone plan defines new goals)*
 
 ### Out of Scope
 - Mobile app — web-first approach
@@ -74,4 +65,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-06-07 — v1.1 milestone started*
+*Last updated: 2026-06-10 — v1.2 milestone archived*
