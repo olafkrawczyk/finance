@@ -319,6 +319,16 @@ export async function deleteAsset(id: string) {
   return json.data;
 }
 
+export async function getAccount(id: string) {
+  const res = await apiFetch(`/accounts/${id}`);
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.error?.message || `Failed to fetch account: ${res.statusText}`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
 export async function createAccount(data: {
   name: string;
   type?: string;

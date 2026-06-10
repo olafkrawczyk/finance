@@ -49,6 +49,15 @@ export function useAccounts() {
   });
 }
 
+export function useAccountDetail(id: string) {
+  const userId = useUserId();
+  return useQuery({
+    queryKey: queryKeys.accounts.detail(userId!, id),
+    queryFn: () => api.getAccount(id),
+    enabled: !!userId && !!id,
+  });
+}
+
 export function useAssets() {
   const userId = useUserId();
   return useQuery({
@@ -171,6 +180,37 @@ export function useDeleteAsset() {
   const userId = useUserId();
   return useMutation({
     mutationFn: (id: string) => api.deleteAsset(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+}
+
+export function useCreateAccount() {
+  const userId = useUserId();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.createAccount>[0]) => api.createAccount(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+}
+
+export function useUpdateAccount() {
+  const userId = useUserId();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof api.updateAccount>[1] }) =>
+      api.updateAccount(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const userId = useUserId();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
     },
