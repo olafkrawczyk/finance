@@ -128,7 +128,7 @@ Input: 2026-05-26;2026-05-26;" ORLEN STACJA NR 4592";" Płatność BLIK";...;-14
 Output: {"date":"2026-05-26","amount":"142.72","description":"ORLEN - paliwo","raw_type":"expense","category_name":"paliwo"}
 
 Input: 2026-05-25;2026-05-25;" Olaf Krawczyk";" Wplata wlasna";...;-8000,00;PLN
-Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna - Olaf Krawczyk","raw_type":"transfer","category_name":null}
+Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna - Olaf Krawczyk","raw_type":"expense","category_name":null}
 
 Input: 2026-05-13;2026-05-13;" GENERALI";" Prowizja Usługi IT";...;5864,08;PLN
 Output: {"date":"2026-05-13","amount":"5864.08","description":"Generali - prowizja ubezpieczeniowa","raw_type":"income","category_name":null}
@@ -137,7 +137,7 @@ Output: {"date":"2026-05-13","amount":"5864.08","description":"Generali - prowiz
   const ipkoExamples = `
 Examples (IPKO format):
 Input: "2026-05-25","2026-05-25","Przelew na konto","+8000.00","PLN","+8200.05","Tytu: Wplata wlasna"
-Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna","raw_type":"transfer","category_name":null}
+Output: {"date":"2026-05-25","amount":"8000.00","description":"Wplata wlasna","raw_type":"income","category_name":null}
 
 Input: "2026-05-04","2026-05-04","Platnosc karta","-11.99","PLN","+5421.49","Tytu: ZABKA Z0685 K.2"
 Output: {"date":"2026-05-04","amount":"11.99","description":"Żabka","raw_type":"expense","category_name":"żabka"}
@@ -154,7 +154,7 @@ Rules:
 - Date format: YYYY-MM-DD
 - Amount: ALWAYS positive decimal string with dot separator (e.g., "123.45")
 - Description: concise Polish description (remove transaction IDs, card numbers, raw bank codes)
-- raw_type: "income" for money received, "expense" for money spent, "transfer" for own-account transfers
+- raw_type: "income" for money received (positive amount), "expense" for money spent (negative amount) — own-account transfers follow the same rule: money leaving = expense, money arriving = income
 - category_name: use the category guide below — assign null if nothing clearly matches
 ${categoryGuide}
 
@@ -209,7 +209,7 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', ca
                     date: { type: 'string' },
                     amount: { type: 'string' },
                     description: { type: 'string' },
-                    raw_type: { type: 'string', enum: ['income', 'expense', 'transfer'] },
+                    raw_type: { type: 'string', enum: ['income', 'expense'] },
                     category_name: { type: ['string', 'null'] },
                   },
                   required: ['date', 'amount', 'description', 'raw_type', 'category_name'],

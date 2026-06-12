@@ -93,8 +93,8 @@ export default function DashboardPage({ onMonthClick, onAssetsClick }: Dashboard
   const totalNetValue = assets.reduce((sum, a) => sum + a.value, 0);
 
   const totalBankBalance = useMemo(() => {
-    if (!data) return 0;
-    return data.reduce((sum, r) => sum + r.savings, 0);
+    if (!data || data.length === 0) return 0;
+    return data[0].balance ?? 0;
   }, [data]);
 
   const totalNetWorth = totalBankBalance + totalNetValue;
