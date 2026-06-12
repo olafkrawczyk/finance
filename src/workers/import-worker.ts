@@ -15,7 +15,7 @@ const QUEUE_NAME = 'import_queue';
 const VISIBILITY_TIMEOUT = 300; // 5 minutes
 const POLL_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 25;
 const EXCEL_INSERT_BATCH_SIZE = 100;
 
 /**
@@ -223,7 +223,7 @@ export async function callOpenRouter(csvRows: string, format: 'ing' | 'ipko', ca
         },
       },
       temperature: 0.1,
-      max_tokens: 4096,
+      max_tokens: 8192,
     }),
   });
 
@@ -553,16 +553,23 @@ async function processCsvImportJob(payload: {
       try {
         const MAX_BATCH_RETRIES = 3;
         let parsed: ParsedTransaction[] | null = null;
+        let lastErr: unknown;
         for (let attempt = 1; attempt <= MAX_BATCH_RETRIES; attempt++) {
-          const result = await callOpenRouter(batchCsvText, bank_format, categoryNames);
-          if (result.length === batch.length) {
-            parsed = result;
-            break;
+          try {
+            const result = await callOpenRouter(batchCsvText, bank_format, categoryNames);
+            if (result.length === batch.length) {
+              parsed = result;
+              break;
+            }
+            console.warn(`[import] Batch rows ${i}–${i + batch.length - 1} attempt ${attempt}/${MAX_BATCH_RETRIES}: LLM returned ${result.length}, expected ${batch.length}`);
+          } catch (callErr) {
+            lastErr = callErr;
+            console.warn(`[import] Batch rows ${i}–${i + batch.length - 1} attempt ${attempt}/${MAX_BATCH_RETRIES}: ${callErr instanceof Error ? callErr.message : callErr}`);
           }
-          console.warn(`[import] Batch rows ${i}–${i + batch.length - 1} attempt ${attempt}/${MAX_BATCH_RETRIES}: LLM returned ${result.length}, expected ${batch.length}`);
         }
         if (!parsed) {
-          throw new Error(`LLM repeatedly returned wrong row count for batch rows ${i}–${i + batch.length - 1} after ${MAX_BATCH_RETRIES} attempts`);
+          const reason = lastErr instanceof Error ? lastErr.message : `wrong row count`;
+          throw new Error(`LLM failed for batch rows ${i}–${i + batch.length - 1} after ${MAX_BATCH_RETRIES} attempts: ${reason}`);
         }
 
         await insertBatch(account_id, parsed, categoryMap, user_id);
