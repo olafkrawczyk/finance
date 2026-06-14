@@ -7,6 +7,13 @@ import type {
   UpdateTransactionInput,
 } from '../../application/schemas/ledger';
 import { listAccounts } from '../reference/use-cases';
+import {
+  computeMonthlySummary,
+  type AggregateRow,
+  type AccountBaseline,
+  type LegacyOpeningBalance,
+  type SnapshotRow,
+} from './summary-math';
 
 // createTransaction: atomic insert + PGMQ enqueue
 export async function createTransaction(input: CreateTransactionInput & { userId: string }): Promise<Transaction> {
@@ -68,7 +75,8 @@ export async function listTransactions(params: {
   return { rows: rows as Transaction[], total: Number(count) };
 }
 
-// getMonthlySummary: SQL aggregation + app-layer derived fields
+// getMonthlySummary: fetch from DB, then delegate the math to the pure
+// computeMonthlySummary module (src/core/ledger/summary-math.ts).
 export async function getMonthlySummary(userId: string): Promise<MonthlySummaryRow[]> {
   const agg = await sql`
     SELECT
@@ -84,147 +92,28 @@ export async function getMonthlySummary(userId: string): Promise<MonthlySummaryR
     ORDER BY month ASC
   `;
 
-  // --- Per-account starting balance aggregation ---
   const accounts = await listAccounts(userId);
-  const hasStartingBalances = accounts.some(
-    (a: { starting_balance: string }) => parseFloat(a.starting_balance || '0') > 0
-  );
 
-  let openingBalanceMap: Map<string, string>;
-  const months = agg.map((r: { month: string }) => r.month);
-  const earliestMonth = months.length > 0 ? months[0] : null;
+  // Fetched unconditionally so the pure layer owns the hasStartingBalances branch.
+  const legacyOpeningBalances = await sql`
+    SELECT year, month, opening_balance
+    FROM monthly_opening_balances
+    WHERE user_id = ${userId}
+    ORDER BY year, month
+  `;
 
-  if (hasStartingBalances) {
-    // D-04: aggregate per-account starting_balance where starting_balance_date <= month
-    const baselineByMonth = new Map<string, number>();
-
-    for (const account of accounts as Array<{
-      starting_balance: string;
-      starting_balance_date: string | null;
-    }>) {
-      const sb = parseFloat(account.starting_balance || '0');
-      if (sb <= 0) continue;
-
-      // D-05: null starting_balance_date → effective from earliest transaction month
-      const dateStr = account.starting_balance_date instanceof Date
-        ? account.starting_balance_date.toISOString().split('T')[0]
-        : String(account.starting_balance_date);
-      const effectiveFrom = dateStr
-        ? dateStr.substring(0, 7) // "YYYY-MM-DD" → "YYYY-MM"
-        : earliestMonth;
-
-      if (!effectiveFrom) continue;
-
-      for (const month of months) {
-        if (month >= effectiveFrom) {
-          baselineByMonth.set(month, (baselineByMonth.get(month) || 0) + sb);
-        }
-      }
-    }
-
-    openingBalanceMap = new Map(
-      months.map((m: string) => [m, String(baselineByMonth.get(m) || 0)])
-    );
-  } else {
-    // D-04 legacy compat: fall back to monthly_opening_balances
-    const balances = await sql`
-      SELECT year, month, opening_balance
-      FROM monthly_opening_balances
-      WHERE user_id = ${userId}
-      ORDER BY year, month
-    `;
-    openingBalanceMap = new Map(
-      (balances as Array<{ year: number; month: number; opening_balance: string }>).map(
-        (b) => [`${b.year}-${String(b.month).padStart(2, '0')}`, b.opening_balance]
-      )
-    );
-  }
-
-  // --- Asset snapshots for forward-filled combined net worth (D-11, D-12) ---
   const assetSnapshots = await sql`
     SELECT asset_id, value, date FROM asset_value_snapshots
     WHERE asset_id IN (SELECT id FROM assets WHERE user_id = ${userId})
     ORDER BY date ASC, created_at ASC
   `;
 
-  // Group snapshots by asset_id, ordered by date for forward-fill
-  const snapshotsByAsset = new Map<string, Array<{ value: string; date: string }>>();
-  for (const snap of assetSnapshots as Array<{ asset_id: string; value: string; date: string }>) {
-    const arr = snapshotsByAsset.get(snap.asset_id) || [];
-    arr.push(snap);
-    snapshotsByAsset.set(snap.asset_id, arr);
-  }
-
-  // Forward-fill: for a given month, compute total asset value from last snapshot on or before month end
-  function getAssetValueForMonth(month: string): number {
-    const [y, m] = month.split('-').map(Number);
-    // JS months are 0-indexed; new Date(y, m, 0) = last day of month m-1
-    // e.g. month "2024-01" → y=2024, m=1 → new Date(2024, 1, 0) = Jan 31, 2024
-    const monthEnd = new Date(y, m, 0);
-
-    let total = 0;
-    for (const snaps of snapshotsByAsset.values()) {
-      let lastValue = 0;
-      for (const snap of snaps) {
-        const snapDate = new Date(snap.date);
-        if (snapDate <= monthEnd) {
-          lastValue = parseFloat(snap.value);
-        } else {
-          break; // snapshots are sorted by date ASC
-        }
-      }
-      total += lastValue;
-    }
-    return total;
-  }
-
-  // --- Running balance computation ---
-  let currentRunningBalance = 0;
-  let cumulativeChanges = 0;
-
-  return agg
-    .map((row: { month: string; wydatki: string; przychody: string; fixed_cost_total: string }) => {
-      const wydatki = parseFloat(row.wydatki);
-      const przychody = parseFloat(row.przychody);
-      const fixedCost = parseFloat(row.fixed_cost_total);
-      const wydatkiBezStalych = wydatki - fixedCost;
-      const zaoszczedzone = przychody - wydatki;
-      const zaoszczedzone_log = zaoszczedzone > 0 ? Math.log10(zaoszczedzone) : 0;
-
-      cumulativeChanges += zaoszczedzone;
-
-      if (hasStartingBalances) {
-        // D-11: stan_konta = per-account baseline + cumulative changes
-        // Baseline is the sum of starting_balances effective for this month (D-04)
-        // Unlike monthly_opening_balances, starting_balances are static baselines
-        // that don't pre-accumulate across months — so we add cumulative changes
-        const baseline = parseFloat(openingBalanceMap.get(row.month) || '0');
-        currentRunningBalance = baseline + cumulativeChanges;
-      } else {
-        // Legacy: monthly_opening_balances already include cumulative history per month
-        const openingBalance = openingBalanceMap.get(row.month);
-        if (openingBalance != null) {
-          currentRunningBalance = parseFloat(openingBalance) + zaoszczedzone;
-        } else {
-          currentRunningBalance += zaoszczedzone;
-        }
-      }
-
-      const assetValue = getAssetValueForMonth(row.month);
-
-      return {
-        month: row.month,
-        wydatki: wydatki.toFixed(4),
-        przychody: przychody.toFixed(4),
-        fixed_cost_total: fixedCost.toFixed(4),
-        wydatki_bez_stalych: wydatkiBezStalych.toFixed(4),
-        zaoszczedzone: zaoszczedzone.toFixed(4),
-        zaoszczedzone_log: zaoszczedzone_log.toFixed(6),
-        stan_konta: currentRunningBalance.toFixed(4),
-        wartosc_netto: (currentRunningBalance + assetValue).toFixed(4),
-      };
-    })
-    .toReversed();
+  return computeMonthlySummary({
+    aggregates: agg as unknown as AggregateRow[],
+    accounts: accounts as unknown as AccountBaseline[],
+    legacyOpeningBalances: legacyOpeningBalances as unknown as LegacyOpeningBalance[],
+    assetSnapshots: assetSnapshots as unknown as SnapshotRow[],
+  });
 }
 
 // createOpeningBalance: insert monthly opening balance

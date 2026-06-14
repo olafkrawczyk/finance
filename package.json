@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "test": "bun test",
     "dev:web": "vite",
     "dev:api": "bun index.ts",
     "dev:worker": "bun src/workers/insights-worker.ts",
